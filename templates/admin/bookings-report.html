@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings Report — BusBook Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.clear()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+      </div>
+    </div>
+  </aside>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Bookings Report</div>
+    </div>
+    <div class="admin-body">
+
+      <!-- Filters -->
+      <div class="admin-card" style="margin-bottom:18px;">
+        <div class="admin-card-body padded">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:14px;align-items:end;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Status</label>
+              <select id="filterStatus" class="form-control">
+                <option value="">All Statuses</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">From Date</label>
+              <input type="date" id="filterFrom" class="form-control">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">To Date</label>
+              <input type="date" id="filterTo" class="form-control">
+            </div>
+            <button class="btn btn-primary" onclick="loadReport()" style="height:44px;">
+              <i class="fa-solid fa-filter"></i> Filter
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-table-list" style="color:var(--brand);"></i> All Bookings</div>
+          <span class="badge badge-brand" id="reportCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th><th>Passenger</th><th>Route</th>
+                <th>Date</th><th>Seat</th><th>Amount</th><th>Payment</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="reportBody">
+              <tr><td colspan="8" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin.js"></script>
+<script>
+document.getElementById('navReport').classList.add('active');
+
+function authFetch(url, opts={}) {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  return fetch(url, opts);
+}
+
+async function loadReport() {
+  const status  = document.getElementById('filterStatus').value;
+  const from    = document.getElementById('filterFrom').value;
+  const to      = document.getElementById('filterTo').value;
+
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (from)   params.set('from_date', from);
+  if (to)     params.set('to_date', to);
+
+  const tbody = document.getElementById('reportBody');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;" class="text-muted"><div class="spinner" style="margin:0 auto;"></div></td></tr>';
+
+  try {
+    const res  = await authFetch('/api/admin/bookings?'+params.toString());
+    const data = await res.json();
+    const list = data.bookings || [];
+    document.getElementById('reportCount').textContent = list.length+' records';
+
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;" class="text-muted">No bookings match the filter.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(b => `
+      <tr>
+        <td><code style="font-size:12px;background:var(--surface2);padding:2px 7px;border-radius:4px;">${b.booking_code}</code></td>
+        <td>
+          <div class="fw-600" style="font-size:13px;">${b.passenger}</div>
+          <div class="text-xs text-muted">${b.email}</div>
+        </td>
+        <td class="fw-600" style="font-size:13px;">${b.route}</td>
+        <td class="text-sm">${b.travel_date}</td>
+        <td class="text-sm">${b.seat_number}</td>
+        <td class="fw-600" style="color:var(--brand-darker);">₱${Number(b.amount||0).toFixed(2)}</td>
+        <td class="text-sm">${b.payment_method}</td>
+        <td><span class="badge badge-${b.status==='confirmed'?'green':b.status==='cancelled'?'red':'yellow'}">${b.status}</span></td>
+      </tr>`).join('');
+  } catch { Toast.error('Failed to load report.'); }
+}
+
+window.onload = function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
+  renderAdminUser(); loadReport();
+};
+</script>
+</body>
+</html>

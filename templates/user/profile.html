@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile — BusBook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+<style>
+.edit-fields { display:none; }
+.edit-fields.open { display:block; }
+.tab-btn {
+  padding:8px 16px;border:none;border-radius:8px;cursor:pointer;
+  font-family:var(--font-body);font-size:13px;font-weight:600;
+  background:var(--surface2);color:var(--text-2);transition:.15s;
+}
+.tab-btn.active { background:var(--brand);color:#fff; }
+</style>
+</head>
+<body>
+<div class="passenger-layout">
+  <nav class="topnav">
+    <a href="/" class="topnav-brand">
+      <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+      <span>BusBook</span>
+    </a>
+    <a href="/book"><i class="fa-solid fa-ticket"></i> Book</a>
+    <a href="/routes"><i class="fa-solid fa-map"></i> Routes</a>
+    <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a href="/profile" class="active"><i class="fa-solid fa-user"></i> Profile</a>
+    <a href="/login" onclick="logout()" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </nav>
+
+  <div class="page-content">
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start;">
+
+      <!-- LEFT: Profile Card -->
+      <div>
+        <div class="section-card" style="margin-bottom:16px;">
+          <div class="section-body" style="text-align:center;padding:24px;">
+            <div class="profile-avatar" id="avatarLetter">?</div>
+            <div style="font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:2px;" id="profileName">Loading…</div>
+            <div class="text-sm text-muted" id="profileRole">passenger</div>
+
+            <div style="margin:18px 0 0;text-align:left;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;">
+                <span class="text-muted"><i class="fa-solid fa-envelope fa-fw"></i> Email</span>
+                <span class="fw-600 text-sm" id="profileEmail">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;">
+                <span class="text-muted"><i class="fa-solid fa-phone fa-fw"></i> Phone</span>
+                <span class="fw-600 text-sm" id="profilePhone">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:14px;">
+                <span class="text-muted"><i class="fa-solid fa-ticket fa-fw"></i> Bookings</span>
+                <span class="fw-600" id="bookingCount">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 7: Edit Profile Card -->
+        <div class="section-card">
+          <div class="section-header" style="cursor:pointer;" onclick="toggleEdit()">
+            <div class="section-title"><i class="fa-solid fa-pen" style="color:var(--brand);"></i> Edit Profile</div>
+            <i class="fa-solid fa-chevron-down text-muted" id="editChevron"></i>
+          </div>
+          <div class="edit-fields" id="editFields">
+            <div style="padding:20px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;">
+                  <label class="form-label">First Name</label>
+                  <input type="text" id="editFirst" class="form-control" placeholder="First name">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label class="form-label">Last Name</label>
+                  <input type="text" id="editLast" class="form-control" placeholder="Last name">
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label">Phone</label>
+                <div class="input-icon-wrap">
+                  <i class="fa-solid fa-phone"></i>
+                  <input type="text" id="editPhone" class="form-control" placeholder="09XXXXXXXXX">
+                </div>
+              </div>
+              <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+              <div class="text-sm fw-600" style="margin-bottom:10px;color:var(--text-2);">Change Password (optional)</div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="form-label">New Password</label>
+                <div class="input-icon-wrap">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="editPw" class="form-control" placeholder="Leave blank to keep current">
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">Confirm Password</label>
+                <div class="input-icon-wrap">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="editPwConfirm" class="form-control" placeholder="Repeat new password">
+                </div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;" onclick="saveProfile()" id="saveBtn">
+                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Booking History + Tabs -->
+      <div>
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title"><i class="fa-solid fa-clock-rotate-left" style="color:var(--brand);"></i> My Bookings</div>
+            <div style="display:flex;gap:8px;">
+              <button class="tab-btn active" id="tabAll" onclick="filterBookings('all')">All</button>
+              <button class="tab-btn" id="tabConfirmed" onclick="filterBookings('confirmed')">Confirmed</button>
+              <button class="tab-btn" id="tabPending" onclick="filterBookings('pending')">Pending</button>
+              <button class="btn btn-outline btn-sm" onclick="loadBookings()"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+          </div>
+          <div id="bookingList" style="padding:4px 0;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <a href="/book" style="display:block;margin-top:16px;">
+          <button class="btn btn-primary" style="width:100%;justify-content:center;">
+            <i class="fa-solid fa-plus"></i> Book a New Ride
+          </button>
+        </a>
+      </div>
+
+    </div>
+  </div>
+  <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script>
+function authFetch(url, opts={}) {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  return fetch(url, opts);
+}
+function logout() { Auth.logout(); }
+
+let allBookings = [];
+
+function toggleEdit() {
+  const el = document.getElementById('editFields');
+  const ch = document.getElementById('editChevron');
+  el.classList.toggle('open');
+  ch.className = el.classList.contains('open')
+    ? 'fa-solid fa-chevron-up text-muted'
+    : 'fa-solid fa-chevron-down text-muted';
+}
+
+async function saveProfile() {
+  const first  = document.getElementById('editFirst').value.trim();
+  const last   = document.getElementById('editLast').value.trim();
+  const phone  = document.getElementById('editPhone').value.trim();
+  const pw     = document.getElementById('editPw').value;
+  const pwConf = document.getElementById('editPwConfirm').value;
+
+  if (pw && pw !== pwConf) { Toast.error('Passwords do not match.'); return; }
+  if (pw && pw.length < 6) { Toast.error('Password must be at least 6 characters.'); return; }
+
+  const body = {};
+  if (first) body.first_name = first;
+  if (last)  body.last_name  = last;
+  if (phone) body.phone      = phone;
+  if (pw)    body.password   = pw;
+
+  if (!Object.keys(body).length) { Toast.warning('Nothing to update.'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try {
+    const res = await authFetch('/api/auth/profile', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success('Profile updated successfully!');
+      // Update stored user
+      const user = JSON.parse(localStorage.getItem('currentUser')||'{}');
+      const updated = {...user, ...data.user};
+      localStorage.setItem('currentUser', JSON.stringify(updated));
+      // Refresh display
+      loadProfile(updated);
+      document.getElementById('editPw').value = '';
+      document.getElementById('editPwConfirm').value = '';
+    } else {
+      Toast.error(data.error || 'Update failed.');
+    }
+  } catch { Toast.error('Server error.'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
+  }
+}
+
+function filterBookings(status) {
+  // Update active tab
+  ['tabAll','tabConfirmed','tabPending'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(status==='all'?'tabAll':status==='confirmed'?'tabConfirmed':'tabPending').classList.add('active');
+  const filtered = status === 'all' ? allBookings : allBookings.filter(b => b.status === status);
+  renderBookings(filtered);
+}
+
+async function cancelBooking(code) {
+  if (!confirm('Cancel this booking?')) return;
+  try {
+    const res = await authFetch(`/api/bookings/cancel/${code}`, {method:'POST'});
+    const data = await res.json();
+    if (res.ok) { Toast.success('Booking cancelled.'); loadBookings(); }
+    else Toast.error(data.error || 'Could not cancel.');
+  } catch { Toast.error('Server error.'); }
+}
+
+function renderBookings(list) {
+  const container = document.getElementById('bookingList');
+  if (!list.length) {
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🎟</span><p>No bookings in this category. <a href="/book" style="color:var(--brand);">Book a ride!</a></p></div>`;
+    return;
+  }
+  container.innerHTML = list.map(b => `
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 24px;border-bottom:1px solid var(--border);">
+      <div style="width:40px;height:40px;background:var(--brand-light);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--brand-darker);flex-shrink:0;">
+        <i class="fa-solid fa-bus"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="fw-600" style="font-size:15px;margin-bottom:3px;">${b.route||'Unknown route'}</div>
+        <div class="text-sm text-muted">
+          <i class="fa-solid fa-calendar fa-fw"></i> ${b.travel_date||'—'}
+          &nbsp;&middot;&nbsp;
+          <i class="fa-solid fa-clock fa-fw"></i> ${b.time||b.departure_time||'—'}
+          &nbsp;&middot;&nbsp;
+          <i class="fa-solid fa-couch fa-fw"></i> Seat ${b.seat_number||'—'}
+        </div>
+        <div style="margin-top:5px;font-size:12px;color:var(--text-3);">
+          Ref: <span style="font-family:monospace;color:var(--brand-darker);font-weight:700;letter-spacing:.06em;">${b.booking_code||'—'}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--brand-darker);">₱${parseFloat(b.fare||b.price||0).toFixed(2)}</div>
+        <span class="badge badge-${b.status==='confirmed'?'green':b.status==='cancelled'?'red':'yellow'}">${b.status}</span>
+        ${(b.status==='pending'||b.status==='locked')?`<button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.booking_code}')"><i class="fa-solid fa-xmark"></i> Cancel</button>`:''}
+        ${b.status==='confirmed'?`<a href="/ticket" onclick="localStorage.setItem('receiptRef','${b.booking_code}')" class="btn btn-primary btn-sm"><i class="fa-solid fa-ticket"></i> Ticket</a>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadBookings() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const container = document.getElementById('bookingList');
+  container.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+  try {
+    const res = await authFetch(`/api/bookings/user/${user.id}`);
+    allBookings = await res.json();
+    document.getElementById('bookingCount').textContent = allBookings.length;
+    filterBookings('all');
+  } catch {
+    container.innerHTML = '<div class="empty-state"><p>Could not load bookings.</p></div>';
+  }
+}
+
+function loadProfile(user) {
+  const name = [(user.first_name||''),(user.last_name||'')].filter(Boolean).join(' ')||user.username||'User';
+  document.getElementById('avatarLetter').textContent = name[0].toUpperCase();
+  document.getElementById('profileName').textContent  = name;
+  document.getElementById('profileRole').textContent  = user.role||'passenger';
+  document.getElementById('profileEmail').textContent = user.email||'—';
+  document.getElementById('profilePhone').textContent = user.phone||'—';
+  // Pre-fill edit form
+  document.getElementById('editFirst').value = user.first_name||'';
+  document.getElementById('editLast').value  = user.last_name||'';
+  document.getElementById('editPhone').value = user.phone||'';
+}
+
+window.onload = async function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user) { window.location.href='/login'; return; }
+  loadProfile(user);
+  loadBookings();
+};
+</script>
+</body>
+</html>

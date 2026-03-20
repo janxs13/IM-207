@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — BusBook Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+<div class="admin-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin" class="active"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+        <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.removeItem('currentUser');localStorage.removeItem('access_token');"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Dashboard</div>
+      <div class="admin-topbar-actions">
+        <span class="text-sm text-muted" id="currentDate"></span>
+      </div>
+    </div>
+
+    <div class="admin-body">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fa-solid fa-users"></i></div>
+          <div><div class="stat-value" id="totalUsers">—</div><div class="stat-label">Total Passengers</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fa-solid fa-ticket"></i></div>
+          <div><div class="stat-value" id="totalBookings">—</div><div class="stat-label">Total Bookings</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+          <div><div class="stat-value" id="confirmedBookings">—</div><div class="stat-label">Confirmed</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><i class="fa-solid fa-peso-sign"></i></div>
+          <div><div class="stat-value" id="totalRevenue" style="font-size:18px;">—</div><div class="stat-label">Total Revenue</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fa-solid fa-bus"></i></div>
+          <div><div class="stat-value" id="totalBuses">—</div><div class="stat-label">Fleet Size</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fa-solid fa-route"></i></div>
+          <div><div class="stat-value" id="totalSchedules">—</div><div class="stat-label">Active Routes</div></div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-receipt" style="color:var(--brand);"></i> Recent Bookings</div>
+          <a href="/admin/schedule" class="btn btn-outline btn-sm">View Schedules</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Booking Code</th><th>Route</th><th>Date</th><th>Seat</th><th>Status</th></tr></thead>
+            <tbody id="recentBookings">
+              <tr><td colspan="6" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin.js"></script>
+<script>
+document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+window.onload = async function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user || user.role !== 'admin') { window.location.href='/login'; return; }
+  renderAdminUser();
+
+  try {
+    const res = await fetch('/api/admin/dashboard', {headers:{'Authorization':'Bearer '+(localStorage.getItem('access_token')||localStorage.getItem('authToken'))}});
+    const data = await res.json();
+    document.getElementById('totalUsers').textContent        = data.total_users??'—';
+    document.getElementById('totalBookings').textContent     = data.total_bookings??'—';
+    document.getElementById('confirmedBookings').textContent = data.confirmed??'—';
+    document.getElementById('totalBuses').textContent        = data.total_buses??'—';
+    document.getElementById('totalSchedules').textContent    = data.total_schedules??'—';
+    document.getElementById('totalRevenue').textContent      = data.total_revenue ? '₱'+parseFloat(data.total_revenue).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—';
+  } catch {}
+
+  try {
+    const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+    const res = await fetch('/api/bookings/', {headers:{'Authorization':'Bearer '+token}});
+    const bookings = await res.json();
+    const tbody = document.getElementById('recentBookings');
+    if (!bookings.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;" class="text-muted">No bookings yet.</td></tr>'; return;
+    }
+    tbody.innerHTML = (Array.isArray(bookings)?bookings:bookings.bookings||[]).slice(0,10).map((b,i) => `
+      <tr>
+        <td class="text-muted text-sm">${i+1}</td>
+        <td><code style="font-size:12px;background:var(--surface2);padding:2px 7px;border-radius:4px;">${b.booking_code||'—'}</code></td>
+        <td class="fw-600">${b.route||'—'}</td>
+        <td class="text-sm">${b.travel_date||'—'}</td>
+        <td class="text-sm">${b.seat_number||'—'}</td>
+        <td><span class="badge badge-${b.status==='confirmed'?'green':b.status==='cancelled'?'red':'yellow'}">${b.status}</span></td>
+      </tr>`).join('');
+  } catch {}
+};
+</script>
+</body>
+</html>

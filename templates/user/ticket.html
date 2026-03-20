@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Ticket — BusBook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+<style>
+@media print {
+  .no-print { display:none !important; }
+  body { background:#fff; }
+  .ticket-card { box-shadow:none !important; border:2px dashed #ccc !important; }
+  .topnav, footer { display:none !important; }
+}
+.ticket-card {
+  max-width:480px;margin:0 auto;
+  background:var(--surface);border-radius:20px;
+  box-shadow:var(--shadow-lg);overflow:hidden;
+}
+.ticket-header {
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+  padding:28px 28px 24px;text-align:center;color:#fff;
+}
+.ticket-header .check-icon {
+  width:52px;height:52px;background:rgba(255,255,255,0.2);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 10px;
+}
+.ticket-header h2 { font-family:var(--font-display);font-size:20px;font-weight:800;margin:0 0 4px; }
+.ticket-header p  { font-size:13px;opacity:.85;margin:0; }
+
+.ticket-body { padding:24px; }
+
+.route-strip {
+  background:var(--brand-light);border:1.5px solid rgba(244,162,97,0.35);
+  border-radius:12px;padding:16px 20px;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;
+}
+.route-city { font-family:var(--font-display);font-size:18px;font-weight:800; }
+.route-arrow { font-size:20px;color:var(--brand-darker); }
+
+.detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px; }
+.detail-cell {
+  background:var(--surface2);border-radius:10px;padding:12px;
+}
+.detail-cell .label { font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px; }
+.detail-cell .value { font-size:15px;font-weight:700;color:var(--text-1); }
+
+.ref-box {
+  background:var(--surface2);border-radius:10px;padding:14px;text-align:center;margin-bottom:16px;
+}
+.ref-box .label { font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px; }
+.ref-box .ref-code { font-family:monospace;font-size:22px;font-weight:800;color:var(--brand-darker);letter-spacing:.12em; }
+
+.amount-bar {
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+  color:#fff;border-radius:12px;padding:14px 18px;
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;
+}
+.amount-bar .label { font-size:14px;opacity:.85; }
+.amount-bar .amount { font-family:var(--font-display);font-size:22px;font-weight:800; }
+
+.btn-row { display:flex;gap:10px; }
+.btn-row .btn { flex:1;justify-content:center; }
+
+.qr-box {
+  text-align:center;margin-bottom:18px;
+  border-top:2px dashed var(--border);padding-top:18px;
+}
+.qr-box img { width:120px;height:120px;border-radius:8px;border:2px solid var(--border-dark); }
+.qr-placeholder {
+  width:120px;height:120px;background:var(--surface2);border-radius:8px;
+  border:2px dashed var(--brand);display:flex;align-items:center;justify-content:center;
+  margin:0 auto 6px;color:var(--text-3);font-size:12px;
+}
+</style>
+</head>
+<body>
+<div class="passenger-layout">
+  <nav class="topnav no-print">
+    <a href="/" class="topnav-brand">
+      <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+      <span>BusBook</span>
+    </a>
+    <a href="/profile"><i class="fa-solid fa-clock-rotate-left"></i> My Bookings</a>
+    <a href="/book"><i class="fa-solid fa-plus"></i> New Booking</a>
+  </nav>
+
+  <div class="page-content" style="padding-bottom:40px;">
+    <div class="ticket-card">
+      <div class="ticket-header">
+        <div class="check-icon"><i class="fa-solid fa-check"></i></div>
+        <h2>Booking Confirmed!</h2>
+        <p>Your e-ticket is ready. Show the QR code when boarding.</p>
+      </div>
+
+      <div class="ticket-body">
+        <div class="route-strip">
+          <div class="route-city" id="fromCity">—</div>
+          <div class="route-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+          <div class="route-city" id="toCity">—</div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-user"></i> Passenger</div>
+            <div class="value" id="passengerName">—</div>
+          </div>
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-couch"></i> Seat No.</div>
+            <div class="value" id="seatNum">—</div>
+          </div>
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-calendar"></i> Travel Date</div>
+            <div class="value" id="travelDate">—</div>
+          </div>
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-wallet"></i> Payment</div>
+            <div class="value" id="paymentMethod">—</div>
+          </div>
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-users"></i> Passengers</div>
+            <div class="value" id="paxCount">—</div>
+          </div>
+          <div class="detail-cell">
+            <div class="label"><i class="fa-solid fa-calculator"></i> Fare / Seat</div>
+            <div class="value" id="farePerSeat">—</div>
+          </div>
+        </div>
+
+        <div class="ref-box">
+          <div class="label">Reference Number</div>
+          <div class="ref-code" id="refCode">—</div>
+        </div>
+
+        <div class="amount-bar">
+          <div>
+            <div class="label" style="font-size:12px;opacity:.8;margin-bottom:2px;">Amount Paid</div>
+            <div class="amount">₱<span id="amountPaid">0.00</span></div>
+          </div>
+          <div style="text-align:right;font-size:12px;opacity:.75;" id="fareBreakdown"></div>
+        </div>
+
+        <div class="qr-box">
+          <div id="qrContainer">
+            <div class="qr-placeholder">Loading QR…</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-top:6px;">Scan to verify ticket</div>
+        </div>
+
+        <div class="btn-row no-print">
+          <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+          <button class="btn btn-outline" onclick="downloadPDF()"><i class="fa-solid fa-download"></i> PDF</button>
+          <button class="btn" style="background:var(--surface2);color:var(--text-2);" onclick="goHome()"><i class="fa-solid fa-house"></i> Home</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="no-print">BusBook &copy; 2026 &mdash; Safe travels!</footer>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script>
+window.onload = async function() {
+  const user    = JSON.parse(localStorage.getItem('currentUser'))||{};
+  const booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+
+  const name = [(user.first_name||''), (user.last_name||'')].filter(Boolean).join(' ') || user.username || '—';
+  document.getElementById('passengerName').textContent  = name;
+  document.getElementById('fromCity').textContent       = localStorage.getItem('selectedFrom')||'—';
+  document.getElementById('toCity').textContent         = localStorage.getItem('selectedTo')||'—';
+  const allSeats = booking.seats ? booking.seats.join(', ') : (booking.seat_number || '—');
+  document.getElementById('seatNum').textContent = allSeats;
+  document.getElementById('travelDate').textContent     = booking.travel_date||'—';
+  document.getElementById('paymentMethod').textContent  = localStorage.getItem('receiptPayment')||'—';
+
+  const farePS  = parseFloat(localStorage.getItem('farePerSeat') || booking.fare_per_seat || 0);
+  const pax     = parseInt(booking.passenger_count || localStorage.getItem('passengerCount') || 1);
+  document.getElementById('paxCount').textContent   = pax + ' passenger(s)';
+  document.getElementById('farePerSeat').textContent = farePS > 0 ? '₱' + farePS.toFixed(2) : '—';
+  if (farePS > 0 && pax > 1) {
+    document.getElementById('fareBreakdown').textContent =
+      '₱' + farePS.toFixed(2) + ' × ' + pax + ' pax';
+  }
+  document.getElementById('amountPaid').textContent     = parseFloat(localStorage.getItem('receiptAmount')||0).toFixed(2);
+  const code = booking.booking_code || localStorage.getItem('receiptRef') || '';
+  document.getElementById('refCode').textContent = code || '—';
+
+  if (code) {
+    try {
+      const _tok = localStorage.getItem('access_token')||localStorage.getItem('authToken')||'';
+      const res = await fetch(`/api/ticket/qr/${code}`, {
+        headers: _tok ? {'Authorization':'Bearer '+_tok} : {}
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const img  = document.createElement('img');
+        img.src    = URL.createObjectURL(blob);
+        img.alt    = 'QR Code';
+        document.getElementById('qrContainer').innerHTML = '';
+        document.getElementById('qrContainer').appendChild(img);
+      }
+    } catch {}
+  }
+};
+
+async function downloadPDF() {
+  const booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+  const code = booking.booking_code||localStorage.getItem('receiptRef');
+  if (!code) { Toast.error('No booking code found.'); return; }
+  try {
+    const res = await fetch(`/api/ticket/download/${code}`);
+    if (res.ok) {
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `ticket_${code}.pdf`;
+      a.click();
+    } else { Toast.error('PDF not ready yet. Try again shortly.'); }
+  } catch { Toast.error('Could not download PDF.'); }
+}
+
+function goHome() {
+  ['currentBooking','selectedFrom','selectedTo','selectedPrice',
+   'receiptPayment','receiptRef','receiptAmount','currentSchedule',
+   'passengerCount','selectedSeats'].forEach(k => localStorage.removeItem(k));
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

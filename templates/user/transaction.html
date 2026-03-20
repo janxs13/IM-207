@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment — BusBook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+<style>
+.pay-wrap { max-width:520px;margin:0 auto; }
+.pay-method { display:flex;gap:12px;margin-bottom:4px; }
+.pay-option { flex:1;cursor:pointer; }
+.pay-option input[type="radio"] { display:none; }
+.pay-label {
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  border:2px solid var(--border-dark);border-radius:14px;padding:16px 10px;
+  transition:all 0.15s;background:var(--surface);
+}
+.pay-option input:checked + .pay-label {
+  border-color:var(--brand);background:var(--brand-light);box-shadow:0 0 0 3px var(--brand-glow);
+}
+.pay-label img { width:56px;height:56px;object-fit:contain;border-radius:8px; }
+.pay-label span { font-size:13px;font-weight:700;color:var(--text-1); }
+.pay-option input:checked + .pay-label span { color:var(--brand-darker); }
+
+.trip-detail { display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border); }
+.trip-detail:last-child { border-bottom:none; }
+.trip-detail .lbl { font-size:14px;color:var(--text-3); }
+.trip-detail .val { font-size:14px;font-weight:600;color:var(--text-1); }
+</style>
+</head>
+<body>
+<div class="passenger-layout">
+  <nav class="topnav">
+    <a href="/" class="topnav-brand">
+      <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+      <span>BusBook</span>
+    </a>
+    <a href="/seat-selection"><i class="fa-solid fa-arrow-left"></i> Back</a>
+    <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
+  </nav>
+
+  <div class="page-content">
+    <div class="page-header" style="text-align:center;margin-bottom:28px;">
+      <div class="page-title"><i class="fa-solid fa-credit-card" style="color:var(--brand);margin-right:8px;"></i>Payment</div>
+      <div class="page-subtitle">Review your trip and choose a payment method</div>
+    </div>
+
+    <div class="pay-wrap">
+      <!-- Trip Summary -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-route"></i> Trip Summary</span>
+        </div>
+        <div class="card-body">
+          <div class="trip-detail">
+            <span class="lbl">From</span><span class="val" id="fromCity">—</span>
+          </div>
+          <div class="trip-detail">
+            <span class="lbl">To</span><span class="val" id="toCity">—</span>
+          </div>
+          <div class="trip-detail">
+            <span class="lbl">Travel Date</span><span class="val" id="travelDate">—</span>
+          </div>
+          <div class="trip-detail">
+            <span class="lbl">Seat</span><span class="val" id="seatNum">—</span>
+          </div>
+          <div class="trip-detail">
+            <span class="lbl">Fare per Seat</span>
+            <span class="val" id="farePerSeat">—</span>
+          </div>
+          <div class="trip-detail">
+            <span class="lbl">Passengers</span>
+            <span class="val" id="paxCount">—</span>
+          </div>
+          <div class="trip-detail" style="background:var(--brand-light);border-radius:8px;padding:10px 14px;margin-top:6px;border-bottom:none;">
+            <span style="font-size:15px;font-weight:700;color:var(--brand-darker);">
+              <i class="fa-solid fa-calculator" style="margin-right:6px;"></i>Total Fare
+            </span>
+            <span style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--brand-darker);">
+              ₱<span id="totalFare">0.00</span>
+            </span>
+          </div>
+          <div style="text-align:center;font-size:12px;color:var(--text-3);margin-top:6px;" id="fareEquation"></div>
+        </div>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-wallet"></i> Select Payment Method</span>
+        </div>
+        <div class="card-body">
+          <div class="pay-method">
+            <div class="pay-option">
+              <input type="radio" name="payment" id="pgcash" value="GCash">
+              <label class="pay-label" for="pgcash">
+                <img src="/static/images/gcash.png" alt="GCash">
+                <span>GCash</span>
+              </label>
+            </div>
+            <div class="pay-option">
+              <input type="radio" name="payment" id="ppaymaya" value="PayMaya">
+              <label class="pay-label" for="ppaymaya">
+                <img src="/static/images/paymaya.png" alt="PayMaya">
+                <span>PayMaya</span>
+              </label>
+            </div>
+            <div class="pay-option">
+              <input type="radio" name="payment" id="ppaypal" value="PayPal">
+              <label class="pay-label" for="ppaypal">
+                <img src="/static/images/paypal.jpg" alt="PayPal">
+                <span>PayPal</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" style="width:100%;" onclick="processPayment()" id="payBtn">
+        <i class="fa-solid fa-lock"></i> Confirm Payment
+      </button>
+    </div>
+  </div>
+
+  <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script>
+function authFetch(url, opts={}) {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  return fetch(url, opts);
+}
+
+window.onload = function() {
+  const booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+  document.getElementById('fromCity').textContent   = localStorage.getItem('selectedFrom')||'—';
+  document.getElementById('toCity').textContent     = localStorage.getItem('selectedTo')||'—';
+  document.getElementById('travelDate').textContent = booking.travel_date||'—';
+  // seat_number may be "A1, A2" (multi-seat) or single seat
+  const seatDisplay = booking.seats ? booking.seats.join(', ') : (booking.seat_number || '—');
+  document.getElementById('seatNum').textContent = seatDisplay;
+  const farePerSeat  = parseFloat(localStorage.getItem('farePerSeat') || booking.fare_per_seat || 0);
+  const pax          = parseInt(booking.passenger_count || localStorage.getItem('passengerCount') || 1);
+  const totalFare    = farePerSeat > 0 && pax > 0
+    ? (farePerSeat * pax).toFixed(2)
+    : parseFloat(localStorage.getItem('selectedPrice') || booking.amount || 0).toFixed(2);
+
+  document.getElementById('farePerSeat').textContent = farePerSeat > 0 ? '₱' + farePerSeat.toFixed(2) : '—';
+  document.getElementById('paxCount').textContent    = pax;
+  document.getElementById('totalFare').textContent   = totalFare;
+  document.getElementById('fareEquation').textContent =
+    farePerSeat > 0 ? '₱' + farePerSeat.toFixed(2) + ' × ' + pax + ' passenger(s) = ₱' + totalFare : '';
+
+  // Make sure selectedPrice is correct total going forward
+  localStorage.setItem('selectedPrice', totalFare);
+};
+
+function processPayment() {
+  const method  = document.querySelector('input[name="payment"]:checked');
+  if (!method) { Toast.warning('Please select a payment method.'); return; }
+
+  const booking = JSON.parse(localStorage.getItem('currentBooking'));
+  if (!booking || !booking.id) {
+    Toast.error('No booking found. Please start again.');
+    window.location.href = '/book';
+    return;
+  }
+
+  // Save chosen method — the payment page will call the API
+  localStorage.setItem('selectedPaymentMethod', method.value);
+
+  const routes = { GCash: '/gcash', PayMaya: '/paymaya', PayPal: '/paypal' };
+  window.location.href = routes[method.value] || '/ticket';
+}
+</script>
+</body>
+</html>

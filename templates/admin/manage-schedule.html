@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<title>Schedules — BusBook Admin</title>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users" id="navUsers"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule" id="navSchedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses" id="navBuses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+        <a href="/admin/verify" id="navVerify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.clear()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+      </div>
+    </div>
+  </aside>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Schedule Management</div>
+      <div class="admin-topbar-actions">
+        <button class="btn btn-primary" onclick="openModal('schedModal')"><i class="fa-solid fa-plus"></i> Add Schedule</button>
+      </div>
+    </div>
+    <div class="admin-body">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-calendar-days" style="color:var(--brand);"></i> All Schedules</div>
+          <span class="badge badge-brand" id="schedCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Route</th><th>Bus</th><th>Departure</th><th>Arrival</th><th>Fare</th><th>Seats</th><th>Actions</th></tr></thead>
+            <tbody id="schedTableBody"><tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="admin-modal" id="schedModal">
+  <div class="admin-modal-box">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title"><i class="fa-solid fa-plus"></i> Add New Schedule</div>
+      <button class="modal-close-btn" onclick="closeModal('schedModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="admin-modal-body">
+      <div class="admin-form-grid">
+        <div class="form-group col-span-2"><label class="form-label">Route (e.g. Cebu - Manila)</label><input type="text" id="sRoute" class="form-control" placeholder="Origin - Destination"></div>
+        <div class="form-group"><label class="form-label">Bus</label>
+          <select id="sBusId" class="form-control">
+            <option value="">— Select a bus —</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Fare (₱)</label><input type="number" id="sFare" class="form-control" placeholder="0.00" step="0.01"></div>
+        <div class="form-group"><label class="form-label">Departure Time</label><input type="datetime-local" id="sDeparture" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Arrival Time</label><input type="datetime-local" id="sArrival" class="form-control"></div>
+      </div>
+    </div>
+    <div class="admin-modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('schedModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddSchedule()"><i class="fa-solid fa-plus"></i> Add Schedule</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin.js"></script>
+<script>
+document.getElementById('navSchedule').classList.add('active');
+
+async function loadScheduleList() {
+  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  try {
+    const res = await fetch('/api/schedules/', {headers:{'Authorization':'Bearer '+token}});
+    let data = await res.json();
+    const schedules = Array.isArray(data) ? data : (data.schedules||[]);
+    document.getElementById('schedCount').textContent = schedules.length + ' schedules';
+    const tbody = document.getElementById('schedTableBody');
+    if (!schedules.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">No schedules. Add one above.</td></tr>'; return; }
+    tbody.innerHTML = schedules.map(s => `
+      <tr>
+        <td class="fw-600">${s.route||'—'}</td>
+        <td>${s.bus_name||'—'}</td>
+        <td>${s.departure_time||'—'}</td>
+        <td>${s.arrival_time||'—'}</td>
+        <td style="font-weight:700;color:var(--brand-darker);">₱${parseFloat(s.fare||s.price||0).toFixed(2)}</td>
+        <td><span class="badge badge-${(s.seats_available||s.available_seats||0)>0?'green':'red'}">${s.seats_available??s.available_seats??0} left</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="delSchedule(${s.id})"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>`).join('');
+  } catch { Toast.error('Failed to load schedules.'); }
+}
+
+async function submitAddSchedule() {
+  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  const busVal = document.getElementById('sBusId').value;
+  const body = { route:document.getElementById('sRoute').value, bus_id: busVal ? parseInt(busVal) : null, fare:parseFloat(document.getElementById('sFare').value), departure_time:document.getElementById('sDeparture').value, arrival_time:document.getElementById('sArrival').value };
+  if (!body.route) { Toast.warning('Route is required.'); return; }
+  const res = await fetch('/api/schedules/', {method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
+  const data = await res.json();
+  if (res.ok) { Toast.success('Schedule added!'); closeModal('schedModal'); loadScheduleList(); }
+  else Toast.error(data.error||'Failed to add schedule.');
+}
+
+async function delSchedule(id) {
+  if (!confirm('Delete this schedule?')) return;
+  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  const res = await fetch(`/api/schedules/${id}`, {method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+  if (res.ok) { Toast.success('Schedule deleted.'); loadScheduleList(); }
+  else Toast.error('Could not delete schedule.');
+}
+
+async function loadBusOptions() {
+  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  try {
+    const res  = await fetch('/api/admin/buses', { headers: { 'Authorization':'Bearer '+token } });
+    const data = await res.json();
+    const buses = data.buses || data || [];
+    const sel = document.getElementById('sBusId');
+    sel.innerHTML = '<option value="">— Select a bus —</option>' +
+      buses.map(b => `<option value="${b.id}">${b.bus_name||b.name} (${b.plate_number}) — ${b.total_seats} seats</option>`).join('');
+  } catch {}
+}
+
+window.onload = function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
+  renderAdminUser(); loadScheduleList(); loadBusOptions();
+};
+</script>
+</body>
+</html>

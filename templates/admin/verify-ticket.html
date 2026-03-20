@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<title>Verify Ticket — BusBook Admin</title>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users" id="navUsers"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule" id="navSchedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses" id="navBuses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+        <a href="/admin/verify" id="navVerify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.clear()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+      </div>
+    </div>
+  </aside>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Verify Ticket</div>
+    </div>
+    <div class="admin-body">
+      <div class="verify-panel">
+        <div class="admin-card" style="margin-bottom:20px;">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fa-solid fa-qrcode" style="color:var(--brand);"></i> Ticket Verification</div>
+          </div>
+          <div class="admin-card-body padded">
+            <p class="text-muted text-sm" style="margin-bottom:16px;">Enter the booking reference code or scan the passenger QR code to verify a ticket.</p>
+            <div class="verify-input-wrap">
+              <input type="text" id="ticketCode" placeholder="Enter booking code (e.g. ABC12345)"
+                     oninput="this.value=this.value.toUpperCase()"
+                     onkeydown="if(event.key==='Enter') verifyTicketCode()">
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%;" onclick="verifyTicketCode()">
+              <i class="fa-solid fa-magnifying-glass"></i> Verify Ticket
+            </button>
+          </div>
+        </div>
+        <div id="verifyResult" style="display:none;"></div>
+      </div>
+    </div>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin.js"></script>
+<script>
+document.getElementById('navVerify').classList.add('active');
+
+async function verifyTicketCode() {
+  const code = document.getElementById('ticketCode').value.trim().toUpperCase();
+  if (!code) { Toast.warning('Please enter a ticket code.'); return; }
+  const resultEl = document.getElementById('verifyResult');
+  resultEl.style.display='none';
+  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  try {
+    const res = await fetch(`/api/verify/${code}`, {headers:{'Authorization':'Bearer '+token}});
+    const data = await res.json();
+    const valid = data.valid || data.status==='confirmed';
+    resultEl.style.display='block';
+    resultEl.innerHTML = `
+      <div class="verify-result">
+        <div class="verify-result-header ${valid?'valid':'invalid'}">
+          <div class="verify-status-icon ${valid?'valid':'invalid'}"><i class="fa-solid fa-${valid?'check':'xmark'}"></i></div>
+          <div>
+            <div style="font-weight:700;font-size:16px;color:${valid?'#065f46':'#991b1b'}">${valid?'Valid Ticket':'Invalid Ticket'}</div>
+            <div style="font-size:13px;color:${valid?'#065f46':'#991b1b'}">${data.message||(valid?'Ticket is authentic and valid.':'Ticket not found or already used.')}</div>
+          </div>
+        </div>
+        ${valid&&data.booking?`
+        <div style="padding:20px 24px;background:var(--surface);">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:14px;">
+            <div><div class="text-muted text-sm">Passenger</div><div class="fw-600">${data.booking.passenger_name||data.booking.username||'—'}</div></div>
+            <div><div class="text-muted text-sm">Route</div><div class="fw-600">${data.booking.route||'—'}</div></div>
+            <div><div class="text-muted text-sm">Seat</div><div class="fw-600">${data.booking.seat_number||'—'}</div></div>
+            <div><div class="text-muted text-sm">Departure</div><div class="fw-600">${data.booking.departure_time||'—'}</div></div>
+          </div>
+        </div>`:''}
+      </div>`;
+  } catch { Toast.error('Verification failed. Check server connection.'); }
+}
+
+window.onload = function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
+  renderAdminUser();
+};
+</script>
+</body>
+</html>

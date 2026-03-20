@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — BusBook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+</head>
+<body>
+<div class="passenger-layout">
+  <nav class="topnav">
+    <a href="/" class="topnav-brand">
+      <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+      <span>BusBook</span>
+    </a>
+    <a href="/book"><i class="fa-solid fa-ticket"></i> Book</a>
+    <a href="/routes"><i class="fa-solid fa-map"></i> Routes</a>
+    <a href="/contact" class="active"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
+    <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
+  </nav>
+
+  <div class="page-content" style="max-width:800px;">
+    <div class="page-header" style="text-align:center;margin-bottom:32px;">
+      <div class="page-title">Contact Us</div>
+      <div class="page-subtitle">Have questions? We'd love to hear from you.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+      <!-- Contact form -->
+      <div class="card" style="grid-column:1/3;">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-paper-plane" style="color:var(--brand);"></i> Send us a Message</span>
+        </div>
+        <div class="card-body">
+          <div id="successMsg" class="alert alert-success" style="display:none;">
+            <i class="fa-solid fa-circle-check"></i>
+            Message sent! We'll get back to you within 24 hours.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Full Name *</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="contactName" class="form-control" placeholder="Juan Dela Cruz">
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Email Address *</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="contactEmail" class="form-control" placeholder="juan@email.com">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Phone Number</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-phone"></i>
+                <input type="text" id="contactPhone" class="form-control" placeholder="09XXXXXXXXX">
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Subject *</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-tag"></i>
+                <select id="contactSubject" class="form-control" style="padding-left:38px;">
+                  <option value="">Select a subject</option>
+                  <option>Booking Inquiry</option>
+                  <option>Complaint</option>
+                  <option>Refund Request</option>
+                  <option>Technical Issue</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:18px;">
+            <label class="form-label">Message *</label>
+            <textarea id="contactMessage" class="form-control" rows="4" style="height:100px;resize:vertical;"
+              placeholder="Describe your concern in detail…"></textarea>
+          </div>
+
+          <button class="btn btn-primary btn-lg" style="width:100%;" onclick="sendMessage()" id="sendBtn">
+            <i class="fa-solid fa-paper-plane"></i> Send Message
+          </button>
+        </div>
+      </div>
+
+      <!-- Info cards -->
+      <div class="card">
+        <div class="card-body" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:42px;height:42px;background:var(--brand-light);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--brand-darker);font-size:18px;flex-shrink:0;">
+            <i class="fa-solid fa-envelope"></i>
+          </div>
+          <div>
+            <div class="fw-600" style="margin-bottom:4px;">Email Support</div>
+            <div class="text-sm text-muted">support@busbook.ph</div>
+            <div class="text-sm text-muted">We reply within 24 hours</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:42px;height:42px;background:#D1FAE5;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#065f46;font-size:18px;flex-shrink:0;">
+            <i class="fa-solid fa-phone"></i>
+          </div>
+          <div>
+            <div class="fw-600" style="margin-bottom:4px;">Phone Support</div>
+            <div class="text-sm text-muted">+63 32 123 4567</div>
+            <div class="text-sm text-muted">Mon–Fri, 8am–6pm</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script>
+// Pre-fill name/email if logged in
+window.onload = function() {
+  const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+  if (user) {
+    const name = [(user.first_name||''),(user.last_name||'')].filter(Boolean).join(' ');
+    document.getElementById('contactName').value  = name || user.username || '';
+    document.getElementById('contactEmail').value = user.email || '';
+  }
+};
+
+function sendMessage() {
+  const name    = document.getElementById('contactName').value.trim();
+  const email   = document.getElementById('contactEmail').value.trim();
+  const subject = document.getElementById('contactSubject').value;
+  const message = document.getElementById('contactMessage').value.trim();
+
+  if (!name)    { Toast.warning('Please enter your name.'); return; }
+  if (!email)   { Toast.warning('Please enter your email.'); return; }
+  if (!subject) { Toast.warning('Please select a subject.'); return; }
+  if (!message) { Toast.warning('Please enter your message.'); return; }
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sending…';
+
+  // Simulate send (no backend email yet — show success UI)
+  setTimeout(() => {
+    document.getElementById('successMsg').style.display = 'flex';
+    document.getElementById('contactMessage').value = '';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Message';
+    Toast.success('Message sent successfully!');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 1000);
+}
+</script>
+</body>
+</html>

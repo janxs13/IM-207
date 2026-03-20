@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Report — BusBook Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.clear()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebarAvatar">A</div>
+        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+      </div>
+    </div>
+  </aside>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Revenue Report</div>
+      <div class="admin-topbar-actions">
+        <button class="btn btn-outline btn-sm" onclick="loadRevenue()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+    </div>
+    <div class="admin-body">
+
+      <!-- Summary stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fa-solid fa-peso-sign"></i></div>
+          <div><div class="stat-value" id="totalRev">—</div><div class="stat-label">Total Revenue</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fa-solid fa-ticket"></i></div>
+          <div><div class="stat-value" id="totalConf">—</div><div class="stat-label">Confirmed Bookings</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fa-solid fa-chart-bar"></i></div>
+          <div><div class="stat-value" id="avgRev">—</div><div class="stat-label">Avg. per Booking</div></div>
+        </div>
+      </div>
+
+      <!-- Daily chart -->
+      <div class="admin-card" style="margin-bottom:20px;">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-chart-area" style="color:var(--brand);"></i> Daily Revenue — Last 7 Days</div>
+        </div>
+        <div class="admin-card-body padded" style="height:260px;">
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Monthly chart -->
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-chart-bar" style="color:var(--brand);"></i> Monthly Revenue — Last 6 Months</div>
+        </div>
+        <div class="admin-card-body padded" style="height:260px;">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin.js"></script>
+<script>
+document.getElementById('navRevenue').classList.add('active');
+let dailyChartInst = null, monthlyChartInst = null;
+
+function authFetch(url, opts={}) {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  return fetch(url, opts);
+}
+
+const brandOrange = '#f4a261';
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '  ₱' + Number(ctx.raw).toLocaleString('en-PH',{minimumFractionDigits:2}) } } },
+  scales: {
+    x: { grid:{ display:false }, ticks:{ color:'#9CA3AF', font:{size:11} } },
+    y: { grid:{ color:'#F3F4F6' }, ticks:{ color:'#9CA3AF', font:{size:11}, callback: v => '₱'+Number(v).toLocaleString() } }
+  }
+};
+
+async function loadRevenue() {
+  try {
+    const res  = await authFetch('/api/admin/revenue');
+    const data = await res.json();
+
+    // Summary
+    const totalRev  = data.daily.reduce((s,d)=>s+d.revenue,0) + data.monthly.slice(0,-1).reduce((s,m)=>s+m.revenue,0);
+    const confTotal = data.daily.reduce((s,d)=>s+d.bookings,0);
+    document.getElementById('totalRev').textContent  = '₱'+data.monthly.reduce((s,m)=>s+m.revenue,0).toLocaleString('en-PH',{minimumFractionDigits:2});
+    document.getElementById('totalConf').textContent = data.daily.reduce((s,d)=>s+d.bookings,0);
+    const avg = confTotal > 0 ? data.daily.reduce((s,d)=>s+d.revenue,0)/confTotal : 0;
+    document.getElementById('avgRev').textContent = '₱'+avg.toFixed(2);
+
+    // Daily chart
+    const dCtx = document.getElementById('dailyChart').getContext('2d');
+    if (dailyChartInst) dailyChartInst.destroy();
+    dailyChartInst = new Chart(dCtx, {
+      type: 'bar',
+      data: {
+        labels: data.daily.map(d=>d.label),
+        datasets: [{
+          label: 'Revenue',
+          data: data.daily.map(d=>d.revenue),
+          backgroundColor: brandOrange+'bb',
+          borderColor: brandOrange,
+          borderWidth: 2,
+          borderRadius: 6
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // Monthly chart
+    const mCtx = document.getElementById('monthlyChart').getContext('2d');
+    if (monthlyChartInst) monthlyChartInst.destroy();
+    monthlyChartInst = new Chart(mCtx, {
+      type: 'line',
+      data: {
+        labels: data.monthly.map(m=>m.label),
+        datasets: [{
+          label: 'Revenue',
+          data: data.monthly.map(m=>m.revenue),
+          borderColor: brandOrange,
+          backgroundColor: brandOrange+'22',
+          borderWidth: 2.5,
+          pointBackgroundColor: brandOrange,
+          pointRadius: 5,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: chartDefaults
+    });
+
+  } catch(e) { Toast.error('Failed to load revenue data.'); }
+}
+
+window.onload = function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
+  renderAdminUser(); loadRevenue();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body {
+    margin:0;
+    background: url("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957") no-repeat center center/cover;
+    min-height:100vh;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.register-container {
+    width: 480px;
+    background: rgba(0,0,0,0.72);
+    padding: 40px;
+    border-radius: 15px;
+    color: white;
+}
+
+.register-container h2 {
+    text-align: center;
+    color: #f4a261;
+    margin-bottom: 25px;
+    font-size: 22px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-group {
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.form-group input {
+    padding: 11px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: rgba(255,255,255,0.92);
+    color: #333;
+}
+
+.form-group input:focus {
+    outline: 2px solid #f4a261;
+}
+
+.signup-btn {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.signup-btn button {
+    background: #f4a261;
+    border: none;
+    padding: 12px 35px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+    width: 100%;
+    color: white;
+    transition: background 0.2s;
+}
+
+.signup-btn button:hover { background: #e76f51; }
+
+.bottom-text {
+    margin-top: 18px;
+    font-size: 13px;
+    text-align: center;
+    color: #ccc;
+}
+
+.bottom-text a {
+    color: #f4a261;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.bottom-text a:hover { text-decoration: underline; }
+
+.error-msg {
+    background: rgba(220,53,69,0.3);
+    border: 1px solid #dc3545;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: none;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="register-container">
+    <h2><i class="fa-solid fa-bus"></i> Create Account</h2>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" id="firstName" placeholder="Juan">
+        </div>
+        <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" id="lastName" placeholder="Dela Cruz">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Email Address *</label>
+        <input type="email" id="regEmail" placeholder="juan@email.com">
+    </div>
+
+    <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="text" id="phone" placeholder="09xxxxxxxxx">
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Password *</label>
+            <input type="password" id="regPassword" placeholder="Min. 6 characters">
+        </div>
+        <div class="form-group">
+            <label>Confirm Password *</label>
+            <input type="password" id="confirmPassword" placeholder="Re-enter password">
+        </div>
+    </div>
+
+    <div class="signup-btn">
+        <button onclick="registerUser()"><i class="fa-solid fa-user-plus"></i> Sign Up</button>
+    </div>
+
+    <div class="bottom-text">
+        Already have an account? <a href="/login">Sign in Now</a>
+    </div>
+</div>
+
+<script>
+async function registerUser() {
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    errEl.textContent   = '';
+
+    // Clear previous field errors
+    document.querySelectorAll('.field-err').forEach(e => e.remove());
+    ['firstName','lastName','regEmail','phone','regPassword','confirmPassword']
+      .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.style.borderColor=''; el.style.boxShadow=''; }
+      });
+
+    function fieldErr(id, msg) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.borderColor = '#EF4444';
+        el.style.boxShadow   = '0 0 0 3px rgba(239,68,68,0.25)';
+        const d = document.createElement('div');
+        d.className = 'field-err';
+        d.style.cssText = 'font-size:11px;color:#f4a261;margin-top:3px;';
+        d.textContent = msg;
+        el.parentNode.appendChild(d);
+    }
+
+    const first_name = document.getElementById('firstName').value.trim();
+    const last_name  = document.getElementById('lastName').value.trim();
+    const email      = document.getElementById('regEmail').value.trim();
+    const phone      = document.getElementById('phone').value.trim();
+    const password   = document.getElementById('regPassword').value;
+    const confirm    = document.getElementById('confirmPassword').value;
+
+    let valid = true;
+    if (!first_name) { fieldErr('firstName', 'First name is required.'); valid = false; }
+    if (!last_name)  { fieldErr('lastName',  'Last name is required.');  valid = false; }
+    if (!email)      { fieldErr('regEmail',  'Email is required.');       valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+                     { fieldErr('regEmail',  'Enter a valid email.');     valid = false; }
+    if (!phone)      { fieldErr('phone', 'Phone is required.');           valid = false; }
+    else if (!/^(09|\+639)\d{9}$/.test(phone.replace(/\s/g,'')))
+                     { fieldErr('phone', 'Use format 09XXXXXXXXX.');      valid = false; }
+    if (!password)   { fieldErr('regPassword', 'Password is required.'); valid = false; }
+    else if (password.length < 6)
+                     { fieldErr('regPassword', 'Min. 6 characters.');     valid = false; }
+    if (password && confirm !== password)
+                     { fieldErr('confirmPassword', 'Passwords do not match.'); valid = false; }
+
+    if (!valid) return;
+
+    const btn = document.querySelector('.signup-btn button');
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+
+    try {
+        const res  = await fetch('/api/auth/register', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ first_name, last_name, email, phone, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            errEl.style.display      = 'block';
+            errEl.style.background   = 'rgba(16,185,129,0.25)';
+            errEl.style.borderColor  = '#10B981';
+            errEl.style.color        = '#a7f3d0';
+            errEl.textContent        = '✓ ' + (data.message || 'Account created! Redirecting…');
+            setTimeout(() => window.location.href = '/login', 1500);
+        } else {
+            errEl.textContent    = data.error || 'Registration failed.';
+            errEl.style.display  = 'block';
+            btn.disabled         = false;
+            btn.innerHTML        = '<i class="fa-solid fa-user-plus"></i> Sign Up';
+        }
+    } catch (e) {
+        errEl.textContent   = 'Server error. Make sure the server is running.';
+        errEl.style.display = 'block';
+        btn.disabled        = false;
+        btn.innerHTML       = '<i class="fa-solid fa-user-plus"></i> Sign Up';
+    }
+}
+</script>
+</body>
+</html>

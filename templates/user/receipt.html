@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Payment Receipt</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#f4f4f4;
+}
+
+.container{
+    width:500px;
+    margin:80px auto;
+    background:white;
+    padding:30px;
+    text-align:center;
+    border-radius:10px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+
+h1{
+    color:green;
+}
+
+.details{
+    text-align:left;
+    margin-top:20px;
+    line-height:1.8;
+}
+
+button{
+    margin-top:25px;
+    padding:10px 20px;
+    border:none;
+    background:#f4a261;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Payment Successful</h1>
+
+<hr>
+
+<div class="details">
+
+<p><strong>From:</strong> <span id="from"></span></p>
+<p><strong>To:</strong> <span id="to"></span></p>
+<p><strong>Payment Method:</strong> <span id="method"></span></p>
+<p><strong>Reference No:</strong> <span id="ref"></span></p>
+<p><strong>Amount:</strong> ₱<span id="amount"></span></p>
+
+</div>
+
+<button onclick="viewTicket()">View Bus Ticket</button>
+
+</div>
+
+<script>
+
+/* LOAD RECEIPT DATA */
+
+document.getElementById("from").innerText =
+localStorage.getItem("selectedFrom");
+
+document.getElementById("to").innerText =
+localStorage.getItem("selectedTo");
+
+document.getElementById("method").innerText =
+localStorage.getItem("receiptPayment");
+
+document.getElementById("ref").innerText =
+localStorage.getItem("receiptRef");
+
+document.getElementById("amount").innerText =
+localStorage.getItem("receiptAmount");
+
+
+function viewTicket(){
+
+    window.location.href = "/ticket";
+
+}
+
+</script>
+
+</body>
+</html>

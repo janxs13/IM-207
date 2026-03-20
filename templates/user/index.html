@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BusBook — Book Your Ride</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="/" class="topnav-brand">
+    <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+    <span>BusBook</span>
+  </a>
+  <a href="/routes"><i class="fa-solid fa-map-location-dot"></i> Routes</a>
+  <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
+  <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
+  <a href="/login" class="btn btn-sm" style="margin-left:8px;background:rgba(255,255,255,0.2);color:#fff;border:1.5px solid rgba(255,255,255,0.45);">Login</a>
+  <a href="/register" class="btn btn-sm" style="margin-left:6px;background:#fff;color:var(--brand-darker);font-weight:700;">Register</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <span class="hero-badge"><i class="fa-solid fa-star"></i> &nbsp;#1 Bus Booking Platform</span>
+    <h1>Travel Smarter,<br><span>Book Faster</span></h1>
+    <p>Book your bus ticket in seconds. Choose your seat, pay online,<br>and travel with confidence across the Philippines.</p>
+    <div class="hero-actions">
+      <a href="/register" class="hero-btn-primary"><i class="fa-solid fa-ticket"></i> Book a Ride</a>
+      <a href="/routes" class="hero-btn-secondary"><i class="fa-solid fa-map"></i> View Routes</a>
+    </div>
+  </div>
+</section>
+
+<div class="features-strip">
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div class="feature-title">Instant Booking</div>
+      <div class="feature-desc">Book your seat in under a minute with real-time availability.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fa-solid fa-couch"></i></div>
+      <div class="feature-title">Choose Your Seat</div>
+      <div class="feature-desc">Pick from our live interactive seat map.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="feature-title">Secure Payments</div>
+      <div class="feature-desc">Pay via GCash, PayMaya, or PayPal safely.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fa-solid fa-qrcode"></i></div>
+      <div class="feature-title">QR E-Ticket</div>
+      <div class="feature-desc">Get a digital ticket with QR — no printing needed.</div>
+    </div>
+  </div>
+</div>
+
+<section style="padding:64px 24px;background:var(--bg);text-align:center;">
+  <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--brand);margin-bottom:8px;">Simple Process</p>
+  <h2 style="font-family:var(--font-display);font-size:30px;font-weight:800;margin-bottom:48px;color:var(--text-1);">How it works</h2>
+  <div style="max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:16px;align-items:start;">
+    <div><div style="width:52px;height:52px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0 auto 14px;">1</div><h3 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:6px;">Create Account</h3><p style="font-size:13px;color:var(--text-3);line-height:1.6;">Sign up free in seconds.</p></div>
+    <div style="display:flex;align-items:center;padding-top:18px;color:var(--brand);"><i class="fa-solid fa-arrow-right"></i></div>
+    <div><div style="width:52px;height:52px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0 auto 14px;">2</div><h3 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:6px;">Choose Route</h3><p style="font-size:13px;color:var(--text-3);line-height:1.6;">Browse & pick your trip.</p></div>
+    <div style="display:flex;align-items:center;padding-top:18px;color:var(--brand);"><i class="fa-solid fa-arrow-right"></i></div>
+    <div><div style="width:52px;height:52px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0 auto 14px;">3</div><h3 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:6px;">Pick Your Seat</h3><p style="font-size:13px;color:var(--text-3);line-height:1.6;">Live seat availability.</p></div>
+    <div style="display:flex;align-items:center;padding-top:18px;color:var(--brand);"><i class="fa-solid fa-arrow-right"></i></div>
+    <div><div style="width:52px;height:52px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0 auto 14px;">4</div><h3 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:6px;">Pay & Board</h3><p style="font-size:13px;color:var(--text-3);line-height:1.6;">Show QR at the gate.</p></div>
+  </div>
+</section>
+
+<section style="background:var(--brand);padding:56px 24px;text-align:center;">
+  <h2 style="font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff;margin-bottom:10px;">Ready for your next trip?</h2>
+  <p style="color:rgba(255,255,255,0.85);font-size:16px;margin-bottom:28px;">Join thousands of passengers who book smarter every day.</p>
+  <a href="/register" class="hero-btn-primary" style="background:#fff;color:var(--brand-darker);"><i class="fa-solid fa-user-plus"></i> Create Free Account</a>
+</section>
+
+<footer>BusBook &copy; 2026 &nbsp;&mdash;&nbsp; <a href="/routes">Routes</a> &nbsp;&middot;&nbsp; <a href="/contact">Contact</a> &nbsp;&middot;&nbsp; <a href="/about">About</a></footer>
+<div id="toast-container"></div>
+</body>
+</html>

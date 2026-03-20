@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Your Ride — BusBook</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/user.css">
+<style>
+/* Fare summary pill that appears when passenger count changes */
+.fare-summary {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--brand-light);
+  border: 1.5px solid rgba(244,162,97,0.4);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--text-1);
+  flex-wrap: wrap;
+}
+.fare-summary.show { display: flex; }
+.fare-summary .eq-part { color: var(--text-2); }
+.fare-summary .eq-result {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-darker);
+  margin-left: auto;
+}
+
+/* Schedule row — highlight selected */
+.sched-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  transition: background 0.12s; cursor: pointer;
+}
+.sched-row:last-child { border-bottom: none; }
+.sched-row:hover { background: var(--surface2); }
+.sched-row.selected-row {
+  background: var(--brand-light);
+  border-left: 3px solid var(--brand);
+}
+
+.route-col { flex: 1; display: flex; align-items: center; gap: 20px; }
+.city-box  { text-align: center; min-width: 90px; }
+.city-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+.city-time { font-size: 12px; color: var(--text-3); }
+
+.route-line { flex: 1; height: 1.5px; background: var(--border-dark); position: relative; }
+.route-line-bus {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  background: var(--surface); padding: 0 6px;
+  color: var(--brand); font-size: 13px;
+}
+
+.fare-col {
+  text-align: right; min-width: 100px;
+}
+.fare-per {
+  font-size: 11px; color: var(--text-3); margin-bottom: 2px;
+}
+.fare-amount {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 800; color: var(--brand-darker);
+}
+.fare-total {
+  font-size: 12px; color: var(--brand-darker); font-weight: 600;
+  background: var(--brand-light); border-radius: 6px;
+  padding: 2px 7px; display: inline-block; margin-top: 3px;
+}
+</style>
+</head>
+<body>
+
+<div class="passenger-layout">
+  <nav class="topnav">
+    <a href="/" class="topnav-brand">
+      <div class="t-icon"><i class="fa-solid fa-bus" style="font-size:16px;color:#fff;"></i></div>
+      <span>BusBook</span>
+    </a>
+    <a href="/book" class="active"><i class="fa-solid fa-ticket"></i> Book</a>
+    <a href="/routes"><i class="fa-solid fa-map"></i> Routes</a>
+    <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
+    <a href="/login" onclick="logout()" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </nav>
+
+  <div class="page-content" style="max-width:900px;">
+    <div class="page-header">
+      <div class="page-title">
+        <i class="fa-solid fa-ticket" style="color:var(--brand);margin-right:8px;"></i>Book Your Ride
+      </div>
+      <div class="page-subtitle">Search schedules, set passenger count, see your total fare instantly</div>
+    </div>
+
+    <!-- SEARCH + PASSENGER CARD -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr 160px 90px 100px;gap:14px;align-items:end;">
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">
+              <i class="fa-solid fa-circle-dot" style="color:var(--brand);"></i> From
+            </label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-circle-dot"></i>
+              <input type="text" id="origin" class="form-control" placeholder="e.g. Cebu City">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">
+              <i class="fa-solid fa-location-pin" style="color:var(--brand);"></i> To
+            </label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-location-pin"></i>
+              <input type="text" id="destination" class="form-control" placeholder="e.g. Manila">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">
+              <i class="fa-solid fa-calendar" style="color:var(--brand);"></i> Travel Date
+            </label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-calendar-days"></i>
+              <input type="date" id="travelDate" class="form-control">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">
+              <i class="fa-solid fa-users" style="color:var(--brand);"></i> Passengers
+            </label>
+            <input type="number" id="passengerCount" class="form-control"
+                   value="1" min="1" max="10"
+                   style="text-align:center;font-weight:700;"
+                   oninput="updateFareSummary()">
+          </div>
+
+          <button class="btn btn-primary" style="width:100%;height:44px;align-self:flex-end;"
+                  onclick="searchSchedules()">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+        </div>
+
+        <!-- FARE COMPUTATION SUMMARY — shown when a schedule is highlighted -->
+        <div class="fare-summary" id="fareSummary">
+          <i class="fa-solid fa-calculator" style="color:var(--brand);font-size:15px;"></i>
+          <span class="eq-part">
+            &#8369;<span id="sumFare">0.00</span> &times; <span id="sumPax">1</span> passenger(s)
+          </span>
+          <span style="color:var(--text-3);">=</span>
+          <span class="eq-result">&#8369;<span id="sumTotal">0.00</span></span>
+          <span style="margin-left:6px;" class="badge badge-brand" id="sumBus"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH RESULTS (shown after search) -->
+    <div id="searchResults" style="display:none;"></div>
+
+    <!-- ALL SCHEDULES (default view) -->
+    <div id="allSchedules">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <i class="fa-solid fa-list"></i> All Available Schedules
+          </span>
+          <span class="badge badge-green" id="scheduleCount"></span>
+        </div>
+        <div id="scheduleList" style="padding:4px 0;">
+          <div class="empty-state"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
+</div>
+
+<div id="toast-container"></div>
+<script src="/static/js/auth.js"></script>
+<script>
+let allSchedules   = [];
+let selectedSched  = null;   // currently highlighted schedule
+
+function authFetch(url, opts={}) {
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  return fetch(url, opts);
+}
+
+function logout() { Auth.logout(); }
+
+/* ── Fare computation display ─────────────────────────── */
+function updateFareSummary() {
+  if (!selectedSched) return;
+  const pax   = parseInt(document.getElementById('passengerCount').value) || 1;
+  const fare  = parseFloat(selectedSched.fare || selectedSched.price || 0);
+  const total = fare * pax;
+
+  document.getElementById('sumFare').textContent  = fare.toFixed(2);
+  document.getElementById('sumPax').textContent   = pax;
+  document.getElementById('sumTotal').textContent = total.toFixed(2);
+  document.getElementById('sumBus').textContent   = selectedSched.bus_name || '';
+  document.getElementById('fareSummary').classList.add('show');
+}
+
+/* ── Render a single schedule row ─────────────────────── */
+function makeSchedRow(s, idx) {
+  const parts    = s.route.split(' - ');
+  const seats    = s.seats_available ?? s.available_seats ?? 0;
+  const fare     = parseFloat(s.fare || s.price || 0);
+  const pax      = parseInt(document.getElementById('passengerCount').value) || 1;
+  const total    = fare * pax;
+  const isFull   = seats === 0;
+  const badgeCls = seats > 10 ? 'badge-green' : seats > 3 ? 'badge-yellow' : 'badge-red';
+
+  return `
+  <div class="sched-row" id="srow-${idx}" onclick="highlightRow(${idx})">
+    <div class="route-col">
+      <div class="city-box">
+        <div class="city-name">${parts[0] || s.route}</div>
+        <div class="city-time">${s.departure_time || '—'}</div>
+      </div>
+      <div class="route-line">
+        <div class="route-line-bus"><i class="fa-solid fa-bus"></i></div>
+      </div>
+      <div class="city-box">
+        <div class="city-name">${parts[1] || '—'}</div>
+        <div class="city-time">${s.arrival_time || '—'}</div>
+      </div>
+    </div>
+
+    <span class="badge ${badgeCls}" style="flex-shrink:0;">${isFull ? 'Full' : seats + ' seats'}</span>
+
+    <div class="fare-col">
+      <div class="fare-per">per seat</div>
+      <div class="fare-amount">&#8369;${fare.toFixed(2)}</div>
+      <div class="fare-total" id="ftotal-${idx}">
+        ${pax > 1 ? '&#8369;' + total.toFixed(2) + ' total' : ''}
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-sm" style="flex-shrink:0;"
+            onclick="event.stopPropagation(); bookNow(${idx})"
+            ${isFull ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+      ${isFull ? 'Full' : '<i class="fa-solid fa-arrow-right"></i> Book'}
+    </button>
+  </div>`;
+}
+
+/* ── Highlight a row and update fare summary ─────────── */
+function highlightRow(idx) {
+  // Remove highlight from all rows
+  document.querySelectorAll('.sched-row').forEach(r => r.classList.remove('selected-row'));
+  const rowEl = document.getElementById('srow-' + idx);
+  if (rowEl) rowEl.classList.add('selected-row');
+
+  selectedSched = allSchedules[idx];
+  updateFareSummary();
+
+  // Also update all "total" pills in the list
+  refreshTotals();
+}
+
+/* ── Refresh total fare column for all rows ──────────── */
+function refreshTotals() {
+  const pax = parseInt(document.getElementById('passengerCount').value) || 1;
+  allSchedules.forEach((s, idx) => {
+    const el = document.getElementById('ftotal-' + idx);
+    if (!el) return;
+    const fare  = parseFloat(s.fare || s.price || 0);
+    const total = fare * pax;
+    el.innerHTML = pax > 1 ? `&#8369;${total.toFixed(2)} total` : '';
+  });
+  // Also update summary if a schedule is highlighted
+  if (selectedSched) updateFareSummary();
+}
+
+/* ── Render schedule list into a container ───────────── */
+function renderList(list, container) {
+  if (!list.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🔍</span>
+        <p>No schedules found for that route.</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="resetSearch()">
+          Show all schedules
+        </button>
+      </div>`;
+    return;
+  }
+  container.innerHTML = list.map((s, idx) => makeSchedRow(s, idx)).join('');
+}
+
+/* ── Search ──────────────────────────────────────────── */
+function searchSchedules() {
+  const origin      = document.getElementById('origin').value.trim().toLowerCase();
+  const destination = document.getElementById('destination').value.trim().toLowerCase();
+
+  if (!origin && !destination) {
+    Toast.warning('Enter at least an origin or destination to search.');
+    return;
+  }
+
+  const q = [origin, destination].filter(Boolean).join(' - ');
+  const filtered = allSchedules.filter(s => s.route.toLowerCase().includes(origin) &&
+    (!destination || s.route.toLowerCase().includes(destination)));
+
+  const resultsEl = document.getElementById('searchResults');
+  const allEl     = document.getElementById('allSchedules');
+
+  resultsEl.style.display = 'block';
+  allEl.style.display     = 'none';
+
+  if (!filtered.length) {
+    resultsEl.innerHTML = `
+      <div class="card"><div class="card-body">
+        <div class="empty-state">
+          <span class="empty-icon">🔍</span>
+          <p>No schedules found. <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="resetSearch()">Show all</button></p>
+        </div>
+      </div></div>`;
+    return;
+  }
+
+  resultsEl.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Search Results</span>
+        <button class="btn btn-outline btn-sm" onclick="resetSearch()">
+          <i class="fa-solid fa-xmark"></i> Clear
+        </button>
+      </div>
+      <div id="resultList" style="padding:4px 0;"></div>
+    </div>`;
+  renderList(filtered, document.getElementById('resultList'));
+}
+
+function resetSearch() {
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('allSchedules').style.display  = 'block';
+  document.getElementById('origin').value      = '';
+  document.getElementById('destination').value = '';
+}
+
+/* ── Book Now ────────────────────────────────────────── */
+function bookNow(idx) {
+  const s = allSchedules[idx];
+  if (!s) return;
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user) { window.location.href = '/login'; return; }
+
+  // Highlight so fare summary is visible before redirect
+  highlightRow(idx);
+
+  const pax   = parseInt(document.getElementById('passengerCount').value) || 1;
+  const fare  = parseFloat(s.fare || s.price || 0);
+  const total = (fare * pax).toFixed(2);
+
+  const seats = s.seats_available ?? s.available_seats ?? 0;
+  if (seats < pax) {
+    Toast.error(`Only ${seats} seat(s) available. Reduce passenger count.`);
+    return;
+  }
+
+  localStorage.setItem('currentSchedule', JSON.stringify(s));
+  localStorage.setItem('selectedFrom',    (s.route.split(' - ')[0] || s.route));
+  localStorage.setItem('selectedTo',      (s.route.split(' - ')[1] || '—'));
+  localStorage.setItem('farePerSeat',     fare.toFixed(2));
+  localStorage.setItem('selectedPrice',   total);   // ← TOTAL = fare × pax
+
+  createBookingAndGo(s, pax, total);
+}
+
+async function createBookingAndGo(schedule, pax, total) {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  const date = document.getElementById('travelDate').value ||
+               new Date().toISOString().split('T')[0];
+
+  try {
+    const res  = await authFetch('/api/bookings/', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id:         user.id,
+        schedule_id:     parseInt(schedule.id),
+        travel_date:     date,
+        passenger_count: pax
+      })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      // Attach passenger count, fare details, total to the booking object
+      const booking = {
+        ...data.booking,
+        passenger_count: pax,
+        fare_per_seat:   parseFloat(schedule.fare || schedule.price || 0),
+        total_fare:      parseFloat(total)
+      };
+      localStorage.setItem('currentBooking',  JSON.stringify(booking));
+      localStorage.setItem('passengerCount',  String(pax));
+      window.location.href = '/seat-selection';
+    } else {
+      Toast.error(data.error || 'Could not create booking. Please try again.');
+    }
+  } catch(e) {
+    Toast.error('Server error. Please try again.');
+  }
+}
+
+/* ── Init ────────────────────────────────────────────── */
+window.onload = async function() {
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  if (!user) { window.location.href = '/login'; return; }
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('travelDate').min   = today;
+  document.getElementById('travelDate').value = today;
+
+  // Refresh totals whenever passenger count changes
+  document.getElementById('passengerCount').addEventListener('input', refreshTotals);
+
+  try {
+    const res = await authFetch('/api/schedules/');
+    let raw   = await res.json();
+    allSchedules = Array.isArray(raw) ? raw : (raw.schedules || []);
+    document.getElementById('scheduleCount').textContent = allSchedules.length + ' schedule(s)';
+    renderList(allSchedules, document.getElementById('scheduleList'));
+  } catch(e) {
+    Toast.error('Could not load schedules. Is the server running?');
+    document.getElementById('scheduleList').innerHTML =
+      '<div class="empty-state"><p>Failed to load schedules.</p></div>';
+  }
+};
+</script>
+</body>
+</html>
