@@ -28,6 +28,7 @@
     <a href="/book"><i class="fa-solid fa-ticket"></i> Book</a>
     <a href="/routes"><i class="fa-solid fa-map"></i> Routes</a>
     <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
+    <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
     <a href="/profile" class="active"><i class="fa-solid fa-user"></i> Profile</a>
     <a href="/login" onclick="logout()" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </nav>
@@ -241,7 +242,7 @@ function renderBookings(list) {
         <div class="text-sm text-muted">
           <i class="fa-solid fa-calendar fa-fw"></i> ${b.travel_date||'—'}
           &nbsp;&middot;&nbsp;
-          <i class="fa-solid fa-clock fa-fw"></i> ${b.time||b.departure_time||'—'}
+          <i class="fa-solid fa-clock fa-fw"></i> ${(b.time||b.departure_time||'—').split('T').pop()}
           &nbsp;&middot;&nbsp;
           <i class="fa-solid fa-couch fa-fw"></i> Seat ${b.seat_number||'—'}
         </div>

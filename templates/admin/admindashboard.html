@@ -88,9 +88,9 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Booking Code</th><th>Route</th><th>Date</th><th>Seat</th><th>Status</th></tr></thead>
+            <thead><tr><th>#</th><th>Booking Code</th><th>Route</th><th>Bus Name</th><th>Plate No.</th><th>Date</th><th>Seat(s)</th><th>Status</th></tr></thead>
             <tbody id="recentBookings">
-              <tr><td colspan="6" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+              <tr><td colspan="8" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -128,17 +128,27 @@ window.onload = async function() {
     const bookings = await res.json();
     const tbody = document.getElementById('recentBookings');
     if (!bookings.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;" class="text-muted">No bookings yet.</td></tr>'; return;
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;" class="text-muted">No bookings yet.</td></tr>'; return;
     }
-    tbody.innerHTML = (Array.isArray(bookings)?bookings:bookings.bookings||[]).slice(0,10).map((b,i) => `
-      <tr>
-        <td class="text-muted text-sm">${i+1}</td>
-        <td><code style="font-size:12px;background:var(--surface2);padding:2px 7px;border-radius:4px;">${b.booking_code||'—'}</code></td>
-        <td class="fw-600">${b.route||'—'}</td>
-        <td class="text-sm">${b.travel_date||'—'}</td>
-        <td class="text-sm">${b.seat_number||'—'}</td>
-        <td><span class="badge badge-${b.status==='confirmed'?'green':b.status==='cancelled'?'red':'yellow'}">${b.status}</span></td>
-      </tr>`).join('');
+    tbody.innerHTML = (Array.isArray(bookings)?bookings:bookings.bookings||[]).slice(0,10).map((b,i) => {
+      const busName  = b.bus_name  || '—';
+      const busPlate = b.bus_plate || '—';
+      const seat     = b.seat_number || '—';
+      const route    = b.route || '—';
+      const date     = b.travel_date || '—';
+      const code     = b.booking_code || '—';
+      const statusCls = b.status==='confirmed' ? 'green' : b.status==='cancelled' ? 'red' : 'yellow';
+      return '<tr>'
+        + '<td class="text-muted text-sm">' + (i+1) + '</td>'
+        + '<td><code style="font-size:12px;background:var(--surface2);padding:2px 7px;border-radius:4px;">' + code + '</code></td>'
+        + '<td class="fw-600">' + route + '</td>'
+        + '<td class="text-sm fw-600">' + busName + '</td>'
+        + '<td class="text-sm"><span style="font-family:monospace;font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px;">' + busPlate + '</span></td>'
+        + '<td class="text-sm">' + date + '</td>'
+        + '<td class="text-sm">' + seat + '</td>'
+        + '<td><span class="badge badge-' + statusCls + '">' + b.status + '</span></td>'
+        + '</tr>';
+    }).join('');
   } catch {}
 };
 </script>

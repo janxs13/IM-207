@@ -41,7 +41,7 @@ def get_schedules():
         result.append({
             "id":              s.id,
             "route":           s.route,
-            "departure_time":  s.departure_time,
+            "departure_time":  (s.departure_time or "").split("T")[-1] if s.departure_time else "",
             "arrival_time":    s.arrival_time,
             "fare":            s.fare,
             "price":           s.fare,          # alias — some frontend uses "price"
@@ -49,8 +49,10 @@ def get_schedules():
             "available_seats": s.seats_available, # alias
             "is_active":       s.is_active,
             "bus_id":          s.bus_id,
-            "bus_name":        bus.name if bus else None,
-            "total_seats":     bus.total_seats if bus else 40
+            "bus_name":        bus.name         if bus else None,
+            "bus_plate":       bus.plate_number if bus else None,
+            "seat_layout":     bus.seat_layout  if bus else "4-column",
+            "total_seats":     bus.total_seats  if bus else 40
         })
     return result
 

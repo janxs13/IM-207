@@ -110,6 +110,8 @@ def all_bookings_admin():
     for b in bookings:
         sched = Schedule.query.get(b.schedule_id)
         usr   = User.query.get(b.user_id)
+        from models.bus import Bus as BusModel
+        bus = BusModel.query.get(sched.bus_id) if sched and sched.bus_id else None
         result.append({
             "id":           b.id,
             "booking_code": b.booking_code,
@@ -117,11 +119,14 @@ def all_bookings_admin():
             "email":        usr.email if usr else "—",
             "route":        sched.route if sched else "—",
             "travel_date":  b.travel_date,
-            "departure":    sched.departure_time if sched else "—",
+            "departure":    (sched.departure_time or "—").split("T")[-1] if sched else "—",
             "seat_number":  b.seat_number or "—",
+            "passenger_count": b.passenger_count or 1,
             "amount":       b.amount or 0,
             "status":       b.status,
-            "payment_method": b.payment_method or "—"
+            "payment_method": b.payment_method or "—",
+            "bus_name":     bus.name if bus else "—",
+            "bus_plate":    bus.plate_number if bus else "—",
         })
     return jsonify({"bookings": result, "total": len(result)})
 

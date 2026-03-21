@@ -64,7 +64,13 @@
             <span class="lbl">Travel Date</span><span class="val" id="travelDate">—</span>
           </div>
           <div class="trip-detail">
-            <span class="lbl">Seat</span><span class="val" id="seatNum">—</span>
+            <span class="lbl">Seat(s)</span><span class="val" id="seatNum">—</span>
+          </div>
+          <div class="trip-detail" id="busRow" style="display:none;">
+            <span class="lbl">Bus</span><span class="val" id="busNameVal">—</span>
+          </div>
+          <div class="trip-detail" id="plateRow" style="display:none;">
+            <span class="lbl">Plate No.</span><span class="val" id="plateVal">—</span>
           </div>
           <div class="trip-detail">
             <span class="lbl">Fare per Seat</span>
@@ -143,7 +149,7 @@ window.onload = function() {
   document.getElementById('toCity').textContent     = localStorage.getItem('selectedTo')||'—';
   document.getElementById('travelDate').textContent = booking.travel_date||'—';
   // seat_number may be "A1, A2" (multi-seat) or single seat
-  const seatDisplay = booking.seats ? booking.seats.join(', ') : (booking.seat_number || '—');
+  const seatDisplay = (booking.seats && booking.seats.length) ? booking.seats.join(', ') : (booking.seat_number && booking.seat_number !== '—' ? booking.seat_number : '—');
   document.getElementById('seatNum').textContent = seatDisplay;
   const farePerSeat  = parseFloat(localStorage.getItem('farePerSeat') || booking.fare_per_seat || 0);
   const pax          = parseInt(booking.passenger_count || localStorage.getItem('passengerCount') || 1);
@@ -153,6 +159,15 @@ window.onload = function() {
 
   document.getElementById('farePerSeat').textContent = farePerSeat > 0 ? '₱' + farePerSeat.toFixed(2) : '—';
   document.getElementById('paxCount').textContent    = pax;
+
+  const busName  = booking.bus_name  || null;
+  const busPlate = booking.bus_plate || null;
+  if (busName) {
+    document.getElementById('busRow').style.display   = '';
+    document.getElementById('plateRow').style.display = '';
+    document.getElementById('busNameVal').textContent = busName;
+    document.getElementById('plateVal').textContent   = busPlate || '—';
+  }
   document.getElementById('totalFare').textContent   = totalFare;
   document.getElementById('fareEquation').textContent =
     farePerSeat > 0 ? '₱' + farePerSeat.toFixed(2) + ' × ' + pax + ' passenger(s) = ₱' + totalFare : '';

@@ -84,6 +84,8 @@
         <div class="txn-row"><span class="txn-lbl">Bill Type</span><span class="txn-val">Bus Ticket</span></div>
         <div class="txn-row"><span class="txn-lbl">Reference No.</span><span class="txn-val" id="dispRef" style="font-family:monospace;letter-spacing:.05em;">—</span></div>
         <div class="txn-row"><span class="txn-lbl">Seat(s)</span><span class="txn-val" id="dispSeats">—</span></div>
+        <div class="txn-row" id="busRow" style="display:none;"><span class="txn-lbl">Bus</span><span class="txn-val" id="dispBus">—</span></div>
+        <div class="txn-row" id="plateRow" style="display:none;"><span class="txn-lbl">Plate No.</span><span class="txn-val" id="dispPlate">—</span></div>
         <div class="txn-row"><span class="txn-lbl">Fare per Seat</span><span class="txn-val" id="dispFarePer">—</span></div>
         <div class="txn-row"><span class="txn-lbl">Passengers</span><span class="txn-val" id="dispPax">—</span></div>
         <div class="txn-row" style="margin-top:6px;padding-top:12px;border-top:2px solid var(--border);">
@@ -109,10 +111,16 @@
 <script>
 const booking  = JSON.parse(localStorage.getItem('currentBooking') || '{}');
 const user     = JSON.parse(localStorage.getItem('currentUser') || '{}');
-const amount   = parseFloat(localStorage.getItem('selectedPrice') || booking.amount || 0);
+const amount   = parseFloat(
+  localStorage.getItem('selectedPrice') ||
+  localStorage.getItem('receiptAmount') ||
+  booking.amount || booking.fare || booking.price || 0
+);
 const farePS   = parseFloat(localStorage.getItem('farePerSeat') || booking.fare_per_seat || 0);
 const pax      = parseInt(booking.passenger_count || localStorage.getItem('passengerCount') || 1);
-const seats    = booking.seats ? booking.seats.join(', ') : (booking.seat_number || '—');
+const seats    = (booking.seats && booking.seats.length)
+  ? booking.seats.join(', ')
+  : (booking.seat_number && booking.seat_number !== '—' ? booking.seat_number : '—');
 const ref      = booking.booking_code || localStorage.getItem('receiptRef') || '—';
 
 document.getElementById('dispRef').textContent    = ref;
@@ -120,6 +128,15 @@ document.getElementById('dispSeats').textContent  = seats;
 document.getElementById('dispAmount').textContent = '₱' + amount.toFixed(2);
 document.getElementById('dispFarePer').textContent = farePS > 0 ? '₱' + farePS.toFixed(2) : '—';
 document.getElementById('dispPax').textContent     = pax + ' passenger(s)';
+
+const busName  = booking.bus_name  || null;
+const busPlate = booking.bus_plate || null;
+if (busName) {
+  document.getElementById('busRow').style.display   = '';
+  document.getElementById('plateRow').style.display = '';
+  document.getElementById('dispBus').textContent    = busName;
+  document.getElementById('dispPlate').textContent  = busPlate || '—';
+}
 if (farePS > 0 && pax > 1) {
   document.getElementById('dispEquation').textContent = '₱' + farePS.toFixed(2) + ' × ' + pax + ' = ₱' + amount.toFixed(2);
 }
@@ -163,8 +180,15 @@ async function submitPayPal() {
     if (res.ok) {
       localStorage.setItem('receiptPayment', 'PayPal');
       localStorage.setItem('receiptRef',     data.payment.reference_no);
-      localStorage.setItem('receiptAmount',  data.payment.amount);
-      const updated = { ...booking, status: 'confirmed', booking_code: data.payment.booking_code || booking.booking_code };
+      localStorage.setItem('receiptAmount',  data.payment.amount || amount);
+      const updated = {
+        ...booking,
+        status:       'confirmed',
+        booking_code: data.payment.booking_code || booking.booking_code,
+        amount:       data.payment.amount || amount,
+        reference_no: data.payment.reference_no,
+        payment_method: data.payment.payment_method,
+      };
       localStorage.setItem('currentBooking', JSON.stringify(updated));
       Toast.success('PayPal payment successful! Redirecting to your ticket…');
       setTimeout(() => { window.location.href = '/ticket'; }, 1400);

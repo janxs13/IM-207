@@ -133,3 +133,17 @@ def cancel(code):
         pass
 
     return jsonify({"message": "Booking cancelled successfully"})
+
+# GET /api/bookings/code/<booking_code> — fetch full booking by code (for ticket page)
+@booking_bp.route("/code/<code>", methods=["GET"])
+@jwt_required()
+def get_by_code(code):
+    from services.booking_service import _serialize_booking
+    booking = Booking.query.filter_by(booking_code=code.upper()).first()
+    if not booking:
+        return jsonify({"error": "Booking not found"}), 404
+    current_user_id = int(get_jwt_identity())
+    claims = get_jwt()
+    if booking.user_id != current_user_id and claims.get("role") != "admin":
+        return jsonify({"error": "Access denied"}), 403
+    return jsonify({"booking": _serialize_booking(booking)}), 200

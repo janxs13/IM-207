@@ -22,6 +22,8 @@ def migrate():
     migrations = [
         # (table, column, sql_to_add)
         ("user", "reset_token", "ALTER TABLE user ADD COLUMN reset_token VARCHAR(20)"),
+        # Expand seat_number to hold multi-seat strings like "A1, B2, C3, D4, A5, B6"
+        # SQLite ALTER COLUMN not supported — we recreate if needed (handled in app.py)
         # Add future migrations here
     ]
 

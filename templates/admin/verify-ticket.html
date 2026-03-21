@@ -7,9 +7,78 @@
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/admin.css">
 <title>Verify Ticket — BusBook Admin</title>
+<style>
+/* Result card states */
+.result-card { border-radius: 14px; overflow: hidden; border: 1.5px solid; }
+
+.result-header {
+  padding: 18px 22px; display: flex; align-items: center; gap: 14px;
+}
+.result-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.result-title  { font-size: 16px; font-weight: 700; }
+.result-msg    { font-size: 13px; margin-top: 3px; line-height: 1.5; }
+
+/* Valid — green */
+.state-valid_first   { border-color: #10B981; }
+.state-valid_first .result-header   { background: #D1FAE5; }
+.state-valid_first .result-icon     { background: #10B981; color: #fff; }
+.state-valid_first .result-title    { color: #065f46; }
+.state-valid_first .result-msg      { color: #065f46; }
+
+/* Warning — amber */
+.state-valid_warning { border-color: #F59E0B; }
+.state-valid_warning .result-header { background: #FEF3C7; }
+.state-valid_warning .result-icon   { background: #F59E0B; color: #fff; }
+.state-valid_warning .result-title  { color: #92400E; }
+.state-valid_warning .result-msg    { color: #92400E; }
+
+/* Already used — red */
+.state-already_used  { border-color: #EF4444; }
+.state-already_used .result-header  { background: #FEE2E2; }
+.state-already_used .result-icon    { background: #EF4444; color: #fff; }
+.state-already_used .result-title   { color: #991b1b; }
+.state-already_used .result-msg     { color: #991b1b; }
+
+/* Not found / not confirmed — red */
+.state-not_found, .state-not_confirmed { border-color: #EF4444; }
+.state-not_found .result-header,
+.state-not_confirmed .result-header    { background: #FEE2E2; }
+.state-not_found .result-icon,
+.state-not_confirmed .result-icon      { background: #EF4444; color: #fff; }
+.state-not_found .result-title,
+.state-not_confirmed .result-title     { color: #991b1b; }
+.state-not_found .result-msg,
+.state-not_confirmed .result-msg       { color: #991b1b; }
+
+/* Booking detail grid */
+.booking-details {
+  padding: 18px 22px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;
+}
+.detail-item .d-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.detail-item .d-value { font-weight: 700; color: var(--text-1); word-break: break-all; }
+
+/* Verify count badge */
+.scan-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  margin-left: 8px;
+}
+.scan-1 { background: #D1FAE5; color: #065f46; }
+.scan-2 { background: #FEF3C7; color: #92400E; }
+</style>
 </head>
 <body>
 <div class="admin-layout">
+
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
@@ -19,11 +88,11 @@
       <div class="sidebar-section-label">Main</div>
       <nav>
         <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
-        <a href="/admin/users" id="navUsers"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
-        <a href="/admin/schedule" id="navSchedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
-        <a href="/admin/buses" id="navBuses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
-        <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
-        <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+        <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/revenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
         <a href="/admin/verify" id="navVerify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
       </nav>
     </div>
@@ -38,81 +107,192 @@
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="sidebar-avatar" id="sidebarAvatar">A</div>
-        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+        <div>
+          <div class="sidebar-user-name" id="sidebarUserName">Administrator</div>
+          <div class="sidebar-user-role">Admin</div>
+        </div>
       </div>
     </div>
   </aside>
+
   <div class="admin-main">
     <div class="admin-topbar">
       <div class="admin-topbar-title">Verify Ticket</div>
     </div>
+
     <div class="admin-body">
-      <div class="verify-panel">
+      <div style="max-width:620px;">
+
         <div class="admin-card" style="margin-bottom:20px;">
           <div class="admin-card-header">
-            <div class="admin-card-title"><i class="fa-solid fa-qrcode" style="color:var(--brand);"></i> Ticket Verification</div>
+            <div class="admin-card-title">
+              <i class="fa-solid fa-qrcode" style="color:var(--brand);"></i> Ticket Verification
+            </div>
           </div>
           <div class="admin-card-body padded">
-            <p class="text-muted text-sm" style="margin-bottom:16px;">Enter the booking reference code or scan the passenger QR code to verify a ticket.</p>
-            <div class="verify-input-wrap">
-              <input type="text" id="ticketCode" placeholder="Enter booking code (e.g. ABC12345)"
+            <p class="text-muted text-sm" style="margin-bottom:16px;">
+              Enter the booking reference code or scan the passenger QR code to verify a ticket.
+              Each ticket can only be verified <strong>once</strong> at boarding.
+            </p>
+            <div class="verify-input-wrap" style="margin-bottom:12px;">
+              <input type="text" id="ticketCode"
+                     placeholder="Enter booking code (e.g. ABC12345)"
                      oninput="this.value=this.value.toUpperCase()"
-                     onkeydown="if(event.key==='Enter') verifyTicketCode()">
+                     onkeydown="if(event.key==='Enter') verifyTicketCode()"
+                     style="text-transform:uppercase;letter-spacing:.08em;font-weight:700;">
             </div>
-            <button class="btn btn-primary btn-lg" style="width:100%;" onclick="verifyTicketCode()">
+            <button class="btn btn-primary btn-lg" style="width:100%;" id="verifyBtn" onclick="verifyTicketCode()">
               <i class="fa-solid fa-magnifying-glass"></i> Verify Ticket
             </button>
           </div>
         </div>
+
         <div id="verifyResult" style="display:none;"></div>
+
       </div>
     </div>
     <footer>BusBook Admin &copy; 2026</footer>
   </div>
 </div>
+
 <div id="toast-container"></div>
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/admin.js"></script>
 <script>
 document.getElementById('navVerify').classList.add('active');
 
+const STATE_CONFIG = {
+  valid_first: {
+    icon: 'fa-check',
+    title: 'Valid Ticket — Passenger May Board',
+    badge: '<span class="scan-badge scan-1"><i class="fa-solid fa-qrcode"></i> 1st scan</span>'
+  },
+  valid_warning: {
+    icon: 'fa-triangle-exclamation',
+    title: 'Already Verified Once — Caution',
+    badge: '<span class="scan-badge scan-2"><i class="fa-solid fa-qrcode"></i> 2nd scan</span>'
+  },
+  already_used: {
+    icon: 'fa-ban',
+    title: 'Ticket Already Used — Entry Denied',
+    badge: ''
+  },
+  not_found: {
+    icon: 'fa-circle-xmark',
+    title: 'Ticket Not Found',
+    badge: ''
+  },
+  not_confirmed: {
+    icon: 'fa-circle-xmark',
+    title: 'Ticket Not Valid',
+    badge: ''
+  }
+};
+
 async function verifyTicketCode() {
   const code = document.getElementById('ticketCode').value.trim().toUpperCase();
   if (!code) { Toast.warning('Please enter a ticket code.'); return; }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Verifying…';
+
   const resultEl = document.getElementById('verifyResult');
-  resultEl.style.display='none';
-  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+  resultEl.style.display = 'none';
+
+  const token = localStorage.getItem('access_token') || localStorage.getItem('authToken');
   try {
-    const res = await fetch(`/api/verify/${code}`, {headers:{'Authorization':'Bearer '+token}});
+    const res  = await fetch(`/api/verify/${code}`, { headers: { 'Authorization': 'Bearer ' + token } });
     const data = await res.json();
-    const valid = data.valid || data.status==='confirmed';
-    resultEl.style.display='block';
+
+    const state  = data.state || (data.valid ? 'valid_first' : 'not_found');
+    const cfg    = STATE_CONFIG[state] || STATE_CONFIG['not_found'];
+    const b      = data.booking || {};
+
+    resultEl.style.display = 'block';
     resultEl.innerHTML = `
-      <div class="verify-result">
-        <div class="verify-result-header ${valid?'valid':'invalid'}">
-          <div class="verify-status-icon ${valid?'valid':'invalid'}"><i class="fa-solid fa-${valid?'check':'xmark'}"></i></div>
+      <div class="result-card state-${state}">
+        <div class="result-header">
+          <div class="result-icon"><i class="fa-solid ${cfg.icon}"></i></div>
           <div>
-            <div style="font-weight:700;font-size:16px;color:${valid?'#065f46':'#991b1b'}">${valid?'Valid Ticket':'Invalid Ticket'}</div>
-            <div style="font-size:13px;color:${valid?'#065f46':'#991b1b'}">${data.message||(valid?'Ticket is authentic and valid.':'Ticket not found or already used.')}</div>
+            <div class="result-title">${cfg.title}${cfg.badge}</div>
+            <div class="result-msg">${data.message || ''}</div>
           </div>
         </div>
-        ${valid&&data.booking?`
-        <div style="padding:20px 24px;background:var(--surface);">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:14px;">
-            <div><div class="text-muted text-sm">Passenger</div><div class="fw-600">${data.booking.passenger_name||data.booking.username||'—'}</div></div>
-            <div><div class="text-muted text-sm">Route</div><div class="fw-600">${data.booking.route||'—'}</div></div>
-            <div><div class="text-muted text-sm">Seat</div><div class="fw-600">${data.booking.seat_number||'—'}</div></div>
-            <div><div class="text-muted text-sm">Departure</div><div class="fw-600">${data.booking.departure_time||'—'}</div></div>
+        ${data.valid && b.booking_code ? `
+        <div class="booking-details">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-user fa-fw"></i> Passenger</div>
+              <div class="d-value">${b.passenger_name || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-route fa-fw"></i> Route</div>
+              <div class="d-value">${b.route || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-couch fa-fw"></i> Seat(s)</div>
+              <div class="d-value">${b.seat_number || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-users fa-fw"></i> Passengers</div>
+              <div class="d-value">${b.passenger_count || 1} pax</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-calendar fa-fw"></i> Travel Date</div>
+              <div class="d-value">${b.travel_date || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-clock fa-fw"></i> Departure</div>
+              <div class="d-value">${b.departure_time || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-bus fa-fw"></i> Bus</div>
+              <div class="d-value">${b.bus_name || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-id-card fa-fw"></i> Plate No.</div>
+              <div class="d-value" style="font-family:monospace;">${b.bus_plate || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-wallet fa-fw"></i> Payment</div>
+              <div class="d-value">${b.payment_method || '—'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="d-label"><i class="fa-solid fa-peso-sign fa-fw"></i> Amount Paid</div>
+              <div class="d-value">
+                ₱${parseFloat(b.amount || 0).toFixed(2)}
+                ${b.fare_per_seat > 0 && (b.passenger_count || 1) > 1
+                  ? '<span style="font-size:11px;color:var(--text-3);display:block;">₱' + b.fare_per_seat.toFixed(2) + ' × ' + (b.passenger_count || 1) + ' pax</span>'
+                  : ''}
+              </div>
+            </div>
           </div>
-        </div>`:''}
+        </div>
+        ` : ''}
       </div>`;
-  } catch { Toast.error('Verification failed. Check server connection.'); }
+
+    // Auto-clear the input so staff can scan the next passenger quickly
+    if (state === 'valid_first') {
+      setTimeout(() => {
+        document.getElementById('ticketCode').value = '';
+        document.getElementById('ticketCode').focus();
+      }, 3000);
+    }
+
+  } catch(e) {
+    Toast.error('Verification failed. Check server connection.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Verify Ticket';
+  }
 }
 
 window.onload = function() {
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
+  if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
   renderAdminUser();
+  document.getElementById('ticketCode').focus();
 };
 </script>
 </body>
