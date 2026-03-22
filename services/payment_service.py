@@ -51,6 +51,7 @@ def process_payment(data):
             "reference_no":   reference_no,
             "payment_method": payment_method,
             "amount":         booking.amount,
-            "booking_code":   booking.booking_code
+            "booking_code":   booking.booking_code,
+            "seat_number":    booking.seat_number
         }
     }, 200

@@ -179,15 +179,18 @@ async function submitPayPal() {
 
     if (res.ok) {
       localStorage.setItem('receiptPayment', 'PayPal');
-      localStorage.setItem('receiptRef',     data.payment.reference_no);
+      localStorage.setItem('receiptRef',      data.payment.reference_no);
+      localStorage.setItem('lastBookingCode', data.payment.booking_code || booking.booking_code);
       localStorage.setItem('receiptAmount',  data.payment.amount || amount);
       const updated = {
         ...booking,
-        status:       'confirmed',
-        booking_code: data.payment.booking_code || booking.booking_code,
-        amount:       data.payment.amount || amount,
-        reference_no: data.payment.reference_no,
+        status:         'confirmed',
+        booking_code:   data.payment.booking_code   || booking.booking_code,
+        amount:         data.payment.amount         || amount,
+        reference_no:   data.payment.reference_no,
         payment_method: data.payment.payment_method,
+        seat_number:    data.payment.seat_number    || booking.seat_number,
+        seats:          booking.seats,
       };
       localStorage.setItem('currentBooking', JSON.stringify(updated));
       Toast.success('PayPal payment successful! Redirecting to your ticket…');
@@ -204,5 +207,6 @@ async function submitPayPal() {
   }
 }
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

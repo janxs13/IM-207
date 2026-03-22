@@ -39,7 +39,7 @@ def create_booking(data):
         status          = "pending",
         amount          = schedule.fare * passenger_count,
         passenger_count = passenger_count,
-        locked_until    = datetime.utcnow() + timedelta(minutes=15)
+        locked_until    = datetime.utcnow() + timedelta(hours=2)
     )
     schedule.seats_available -= passenger_count
     db.session.add(booking)

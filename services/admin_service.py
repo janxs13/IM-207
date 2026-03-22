@@ -6,7 +6,8 @@ from extensions import db
 
 
 def get_dashboard_stats():
-    total_users     = User.query.count()
+    # Only count passengers (role='user'), not admin accounts
+    total_users     = User.query.filter_by(role="user").count()
     total_bookings  = Booking.query.count()
     confirmed       = Booking.query.filter_by(status="confirmed").count()
     cancelled       = Booking.query.filter_by(status="cancelled").count()
@@ -28,11 +29,11 @@ def get_dashboard_stats():
 
 
 def get_all_users():
-    users = User.query.all()
+    # Only return passengers (role='user'), exclude admin accounts
+    users = User.query.filter_by(role="user").all()
     result = []
     for u in users:
         booking_count = Booking.query.filter_by(user_id=u.id).count()
-        # Build display name — support both first_name/last_name and username fields
         username = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email
         result.append({
             "id":            u.id,

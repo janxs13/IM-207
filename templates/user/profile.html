@@ -294,5 +294,6 @@ window.onload = async function() {
   loadBookings();
 };
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

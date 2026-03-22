@@ -264,12 +264,12 @@ function populateTicket(booking, user) {
 
 window.onload = async function() {
   const user    = JSON.parse(localStorage.getItem('currentUser')) || {};
-  // The code to look up — either from recent booking flow or from profile "View Ticket" click
-  const code    = localStorage.getItem('receiptRef') || '';
+  // The code to look up — prefer lastBookingCode (actual booking code), fall back to receiptRef
+  const code    = localStorage.getItem('lastBookingCode') || localStorage.getItem('receiptRef') || '';
   let   booking = JSON.parse(localStorage.getItem('currentBooking')) || {};
 
-  // If ticket code is set and booking doesn't match (came from profile), fetch fresh from API
-  if (code && code !== '—' && booking.booking_code !== code) {
+  // Always fetch fresh from API when we have a booking code — ensures seat_number is up to date
+  if (code && code !== '—') {
     try {
       const res  = await authFetch(`/api/bookings/code/${code}`);
       const data = await res.json();
@@ -292,7 +292,7 @@ window.onload = async function() {
 
 async function downloadPDF() {
   const booking = JSON.parse(localStorage.getItem('currentBooking')) || {};
-  const code    = booking.booking_code || localStorage.getItem('receiptRef');
+  const code    = booking.booking_code || localStorage.getItem('lastBookingCode') || localStorage.getItem('receiptRef');
   if (!code) { Toast.error('No booking code found.'); return; }
   try {
     const res = await authFetch(`/api/ticket/download/${code}`);
@@ -308,10 +308,11 @@ async function downloadPDF() {
 
 function goHome() {
   ['currentBooking','selectedFrom','selectedTo','selectedPrice','receiptPayment',
-   'receiptRef','receiptAmount','currentSchedule','passengerCount','selectedSeats',
+   'receiptRef','lastBookingCode','receiptAmount','currentSchedule','passengerCount','selectedSeats',
    'farePerSeat'].forEach(k => localStorage.removeItem(k));
   window.location.href = '/';
 }
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

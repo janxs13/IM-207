@@ -130,6 +130,56 @@ def all_bookings_admin():
         })
     return jsonify({"bookings": result, "total": len(result)})
 
+
+# ── Admin: update booking status ────────────────────────────────
+@admin_bp.route("/bookings/<int:booking_id>/status", methods=["PUT"])
+@jwt_required()
+def update_booking_status(booking_id):
+    err = admin_required()
+    if err: return err
+
+    data       = request.get_json() or {}
+    new_status = (data.get("status") or "").strip().lower()
+
+    allowed = {"confirmed", "pending", "cancelled"}
+    if new_status not in allowed:
+        return jsonify({"error": f"Invalid status. Must be one of: {', '.join(sorted(allowed))}"}), 400
+
+    booking = Booking.query.get(booking_id)
+    if not booking:
+        return jsonify({"error": "Booking not found"}), 404
+
+    old_status = booking.status
+
+    # When cancelling: restore seats back to the schedule
+    if new_status == "cancelled" and old_status != "cancelled":
+        schedule = Schedule.query.get(booking.schedule_id)
+        if schedule:
+            pax = booking.passenger_count or 1
+            schedule.seats_available += pax
+
+    # When un-cancelling (cancelled → confirmed/pending): deduct seats again
+    if old_status == "cancelled" and new_status != "cancelled":
+        schedule = Schedule.query.get(booking.schedule_id)
+        if schedule:
+            pax = booking.passenger_count or 1
+            if schedule.seats_available >= pax:
+                schedule.seats_available -= pax
+            else:
+                return jsonify({"error": "Not enough seats available to reinstate this booking"}), 400
+
+    booking.status = new_status
+    from extensions import db as _db
+    _db.session.commit()
+
+    return jsonify({
+        "message":     f"Booking {booking.booking_code} status updated to '{new_status}'",
+        "booking_id":  booking_id,
+        "booking_code": booking.booking_code,
+        "old_status":  old_status,
+        "new_status":  new_status
+    }), 200
+
 # ── Feature 4: Revenue chart data ───────────────────────────────
 @admin_bp.route("/revenue", methods=["GET"])
 @jwt_required()
@@ -194,3 +244,31 @@ def admin_reset_password(user_id):
     user.password = generate_password_hash(new_password)
     db.session.commit()
     return jsonify({"message": f"Password reset for {user.email}"}), 200
+
+# FIX 2 — GET /api/admin/bookings/recent — last 10 bookings for dashboard
+@admin_bp.route("/bookings/recent", methods=["GET"])
+@jwt_required()
+def recent_bookings():
+    err = admin_required()
+    if err: return err
+
+    bookings = Booking.query.order_by(Booking.created_at.desc()).limit(10).all()
+    result = []
+    for b in bookings:
+        sched = Schedule.query.get(b.schedule_id)
+        usr   = User.query.get(b.user_id)
+        result.append({
+            "id":              b.id,
+            "booking_code":    b.booking_code,
+            "passenger":       f"{usr.first_name} {usr.last_name}".strip() if usr else "—",
+            "email":           usr.email if usr else "—",
+            "route":           sched.route if sched else "—",
+            "travel_date":     b.travel_date,
+            "departure":       (sched.departure_time or "—").split("T")[-1] if sched else "—",
+            "seat_number":     b.seat_number or "—",
+            "passenger_count": b.passenger_count or 1,
+            "amount":          b.amount or 0,
+            "status":          b.status,
+            "payment_method":  b.payment_method or "—",
+        })
+    return jsonify({"bookings": result})

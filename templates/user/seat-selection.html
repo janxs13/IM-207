@@ -199,7 +199,7 @@ html, body {
         <i class="fa-solid fa-hourglass-half" style="color:#EF4444;font-size:17px;"></i>
         <div>
           <div style="font-size:11px;color:rgba(255,255,255,0.5);">Seat reserved for</div>
-          <span id="countdown" style="font-weight:700;color:var(--brand);font-size:15px;">15:00</span>
+          <span id="countdown" style="font-weight:700;color:var(--brand);font-size:15px;">120:00</span>
         </div>
       </div>
 
@@ -241,7 +241,7 @@ const totalSeats     = parseInt(booking.total_seats || schedule.total_seats || 4
 const fare           = parseFloat(schedule.fare || schedule.price || booking.fare_per_seat || 0);
 
 let selectedSeats = [];
-let secondsLeft   = 900;
+let secondsLeft   = 7200;  // 2 hours, matches server locked_until
 let timerInterval = null;
 
 if (!user.id || !booking.id) { window.location.href = '/book'; }
@@ -364,7 +364,27 @@ async function loadSeats() {
     const schedId = booking.schedule_id || schedule.id;
     const res  = await authFetch(`/api/bookings/seats/${schedId}`);
     const data = await res.json();
-    buildGrid(data.booked_seats || []);
+
+    // booked_seats includes ALL taken seats (other people's bookings).
+    // We need to exclude THIS booking's own seats from the "taken" list
+    // so they show as selectable/selected instead of locked-grey.
+    const mySeats = (booking.seat_number || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+
+    const othersTaken = (data.booked_seats || []).filter(s => !mySeats.includes(s));
+    buildGrid(othersTaken);
+
+    // Re-select seats that were already saved for this booking
+    if (mySeats.length) {
+      mySeats.forEach(seatId => {
+        const btn = document.querySelector(`.seat[data-seat="${seatId}"]`);
+        if (btn && btn.classList.contains('available')) {
+          btn.classList.replace('available', 'selected');
+          if (!selectedSeats.includes(seatId)) selectedSeats.push(seatId);
+        }
+      });
+      updateSummary();
+    }
   } catch { buildGrid([]); }
 }
 
@@ -452,5 +472,6 @@ try {
 
 loadSeats(); startTimer(); updateSummary();
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

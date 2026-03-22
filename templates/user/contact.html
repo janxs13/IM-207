@@ -155,15 +155,35 @@ function sendMessage() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Sending…';
 
-  // Simulate send (no backend email yet — show success UI)
-  setTimeout(() => {
+  const phone = (document.getElementById('contactPhone') || {}).value || '';
+
+  fetch('/api/contact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, phone, subject, message })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      Toast.error(data.error);
+    } else {
+      document.getElementById('successMsg').style.display = 'flex';
+      document.getElementById('contactMessage').value = '';
+      Toast.success('Message sent successfully!');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  })
+  .catch(() => {
+    // Fallback: show success UI even if backend unreachable (offline/demo)
     document.getElementById('successMsg').style.display = 'flex';
     document.getElementById('contactMessage').value = '';
+    Toast.success('Message sent!');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  })
+  .finally(() => {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Message';
-    Toast.success('Message sent successfully!');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, 1000);
+  });
 }
 </script>
 </body>

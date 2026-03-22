@@ -445,5 +445,6 @@ window.onload = async function() {
   }
 };
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

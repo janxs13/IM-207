@@ -22,7 +22,7 @@ from models.payment  import Payment
 
 
 def _safe_migrate(app):
-    """Add any missing columns to the existing SQLite DB without losing data."""
+    """Add missing columns only. NEVER drops or recreates tables — that wipes booking data."""
     db_path = os.path.join(app.instance_path, "bus_ticketing.db")
     if not os.path.exists(db_path):
         return  # fresh DB — db.create_all() will build everything
@@ -34,53 +34,33 @@ def _safe_migrate(app):
         cur.execute(f"PRAGMA table_info({table})")
         return any(r[1] == col for r in cur.fetchall())
 
-    pending = [
-        ("user", "reset_token", "ALTER TABLE user ADD COLUMN reset_token VARCHAR(20)"),
-        ("booking", "verify_count", "ALTER TABLE booking ADD COLUMN verify_count INTEGER DEFAULT 0"),
-    ]
+    def table_exists(table):
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+        return cur.fetchone() is not None
 
-    # SQLite cannot ALTER COLUMN size — resize seat_number by recreating booking table if needed
-    try:
-        cur.execute("PRAGMA table_info(booking)")
-        cols = cur.fetchall()
-        seat_col = next((r for r in cols if r[1] == "seat_number"), None)
-        if seat_col and "10" in str(seat_col[2]):  # still VARCHAR(10)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS booking_new AS SELECT * FROM booking
-            """)
-            cur.execute("DROP TABLE booking")
-            cur.execute("""
-                CREATE TABLE booking (
-                    id INTEGER PRIMARY KEY,
-                    user_id INTEGER REFERENCES user(id),
-                    schedule_id INTEGER REFERENCES schedule(id),
-                    seat_number VARCHAR(100),
-                    booking_code VARCHAR(50) UNIQUE,
-                    status VARCHAR(20) DEFAULT 'pending',
-                    travel_date VARCHAR(20),
-                    payment_method VARCHAR(50),
-                    reference_no VARCHAR(50),
-                    amount FLOAT,
-                    passenger_count INTEGER DEFAULT 1,
-                    locked_until DATETIME,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cur.execute("INSERT INTO booking SELECT * FROM booking_new")
-            cur.execute("DROP TABLE booking_new")
-            conn.commit()
-            print("[migrate] Expanded booking.seat_number to VARCHAR(100)")
-    except Exception as e:
-        print(f"[migrate] seat_number resize skipped: {e}")
+    # ADD COLUMN only — safe, never drops tables, never loses data
+    pending = [
+        ("user",    "reset_token",     "ALTER TABLE user    ADD COLUMN reset_token     VARCHAR(20)"),
+        ("booking", "verify_count",    "ALTER TABLE booking ADD COLUMN verify_count    INTEGER DEFAULT 0"),
+        ("booking", "booking_code",    "ALTER TABLE booking ADD COLUMN booking_code    VARCHAR(50)"),
+        ("booking", "payment_method",  "ALTER TABLE booking ADD COLUMN payment_method  VARCHAR(50)"),
+        ("booking", "reference_no",    "ALTER TABLE booking ADD COLUMN reference_no    VARCHAR(50)"),
+        ("booking", "amount",          "ALTER TABLE booking ADD COLUMN amount          FLOAT"),
+        ("booking", "passenger_count", "ALTER TABLE booking ADD COLUMN passenger_count INTEGER DEFAULT 1"),
+        ("booking", "locked_until",    "ALTER TABLE booking ADD COLUMN locked_until    DATETIME"),
+        ("schedule","arrival_time",    "ALTER TABLE schedule ADD COLUMN arrival_time   VARCHAR(50)"),
+        ("schedule","bus_id",          "ALTER TABLE schedule ADD COLUMN bus_id         INTEGER"),
+        ("schedule","is_active",       "ALTER TABLE schedule ADD COLUMN is_active      BOOLEAN DEFAULT 1"),
+    ]
 
     for table, col, sql in pending:
         try:
-            if not col_exists(table, col):
+            if table_exists(table) and not col_exists(table, col):
                 cur.execute(sql)
                 conn.commit()
                 print(f"[migrate] Added column {table}.{col}")
         except Exception as e:
-            print(f"[migrate] Warning: {e}")
+            print(f"[migrate] Warning adding {table}.{col}: {e}")
 
     conn.close()
 
@@ -180,6 +160,22 @@ def create_app():
 
     @app.errorhandler(500)
     def server_error(e):      return render_template("user/404.html"), 500
+
+    # ── Contact form ─────────────────────────────────────────────────
+    @app.route("/api/contact", methods=["POST"])
+    def contact_submit():
+        from flask import request as req, jsonify as jsn
+        data    = req.get_json() or {}
+        name    = (data.get("name")    or "").strip()
+        email   = (data.get("email")   or "").strip()
+        subject = (data.get("subject") or "").strip()
+        message = (data.get("message") or "").strip()
+        if not all([name, email, subject, message]):
+            return jsn({"error": "All fields are required"}), 400
+        # In production: send email via Flask-Mail or save to DB.
+        # For now, log to console and return success.
+        print(f"[CONTACT] From: {name} <{email}> | Subject: {subject} | Msg: {message[:80]}")
+        return jsn({"message": "Message received! We will get back to you soon."}), 200
 
     with app.app_context():
         _safe_migrate(app)   # add missing columns BEFORE create_all

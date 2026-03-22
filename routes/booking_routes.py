@@ -43,7 +43,17 @@ def booked_seats(schedule_id):
         Booking.schedule_id == schedule_id,
         Booking.status.in_(["locked", "pending", "confirmed"])
     ).all()
-    return jsonify({"booked_seats": [b.seat_number for b in taken if b.seat_number]})
+
+    # Flatten comma-separated seat strings into a list of individual seat IDs
+    seat_list = []
+    for b in taken:
+        if b.seat_number:
+            for s in b.seat_number.split(','):
+                s = s.strip()
+                if s:
+                    seat_list.append(s)
+
+    return jsonify({"booked_seats": seat_list})
 
 # POST /api/bookings/select-seat — assign a seat to a booking
 @booking_bp.route("/select-seat", methods=["POST"])

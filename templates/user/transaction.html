@@ -143,8 +143,23 @@ function authFetch(url, opts={}) {
   return fetch(url, opts);
 }
 
-window.onload = function() {
-  const booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+window.onload = async function() {
+  let booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+
+  // Defensive fallback: if seat is missing but we have a booking code, re-fetch from API
+  const seatMissing = !booking.seat_number || booking.seat_number === '—' || booking.seat_number === 'null';
+  if (seatMissing && booking.booking_code) {
+    try {
+      const res = await authFetch('/api/bookings/code/' + booking.booking_code);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.booking && data.booking.seat_number && data.booking.seat_number !== '—') {
+          booking = { ...booking, ...data.booking };
+          localStorage.setItem('currentBooking', JSON.stringify(booking));
+        }
+      }
+    } catch(e) { /* silent — fall through to localStorage values */ }
+  }
   document.getElementById('fromCity').textContent   = localStorage.getItem('selectedFrom')||'—';
   document.getElementById('toCity').textContent     = localStorage.getItem('selectedTo')||'—';
   document.getElementById('travelDate').textContent = booking.travel_date||'—';
@@ -194,5 +209,6 @@ function processPayment() {
   window.location.href = routes[method.value] || '/ticket';
 }
 </script>
+<script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>
 </html>

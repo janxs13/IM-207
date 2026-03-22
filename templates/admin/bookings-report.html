@@ -7,6 +7,37 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/admin.css">
+<style>
+/* Confirmation modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.45);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--surface); border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  padding: 28px 30px; width: 100%; max-width: 420px; margin: 20px;
+}
+.modal-box h3 { font-family: var(--font-display); font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.modal-box p  { font-size: 14px; color: var(--text-2); margin-bottom: 20px; line-height: 1.6; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px;
+  font-weight: 700; margin: 0 2px;
+}
+/* Action button in table */
+.action-wrap { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.btn-status {
+  padding: 3px 10px; border: none; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s; white-space: nowrap;
+}
+.btn-status:hover { opacity: .8; }
+.btn-cancel   { background: #FEE2E2; color: #991b1b; }
+.btn-confirm  { background: #D1FAE5; color: #065f46; }
+.btn-pending  { background: #FEF3C7; color: #92400E; }
+</style>
 </head>
 <body>
 <div class="admin-layout">
@@ -21,11 +52,10 @@
         <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
         <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
         <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
-        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>      
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
         <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
         <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
         <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
-        
       </nav>
     </div>
     <div class="sidebar-section">
@@ -39,10 +69,14 @@
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="sidebar-avatar" id="sidebarAvatar">A</div>
-        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+        <div>
+          <div class="sidebar-user-name" id="sidebarUserName">Administrator</div>
+          <div class="sidebar-user-role">Admin</div>
+        </div>
       </div>
     </div>
   </aside>
+
   <div class="admin-main">
     <div class="admin-topbar">
       <div class="admin-topbar-title">Bookings Report</div>
@@ -77,9 +111,12 @@
         </div>
       </div>
 
+      <!-- Table -->
       <div class="admin-card">
         <div class="admin-card-header">
-          <div class="admin-card-title"><i class="fa-solid fa-table-list" style="color:var(--brand);"></i> All Bookings</div>
+          <div class="admin-card-title">
+            <i class="fa-solid fa-table-list" style="color:var(--brand);"></i> All Bookings
+          </div>
           <span class="badge badge-brand" id="reportCount"></span>
         </div>
         <div class="table-wrap">
@@ -87,11 +124,11 @@
             <thead>
               <tr>
                 <th>Code</th><th>Passenger</th><th>Route</th><th>Bus</th><th>Plate</th>
-                <th>Date</th><th>Seat</th><th>Amount</th><th>Payment</th><th>Status</th>
+                <th>Date</th><th>Seat</th><th>Amount</th><th>Payment</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="reportBody">
-              <tr><td colspan="10" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+              <tr><td colspan="11" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -101,6 +138,19 @@
     <footer>BusBook Admin &copy; 2026</footer>
   </div>
 </div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal-box">
+    <h3 id="modalTitle">Change Booking Status</h3>
+    <p id="modalBody">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn" id="modalConfirmBtn" onclick="confirmStatusChange()">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/admin.js"></script>
@@ -115,10 +165,110 @@ function authFetch(url, opts={}) {
   return fetch(url, opts);
 }
 
+// ── Status modal state ──────────────────────────────────────────
+let pendingAction = null;  // { bookingId, bookingCode, newStatus, passenger }
+
+const STATUS_COLORS = { confirmed: '#065f46', pending: '#92400E', cancelled: '#991b1b' };
+const STATUS_BG     = { confirmed: '#D1FAE5', pending: '#FEF3C7', cancelled: '#FEE2E2' };
+const STATUS_LABELS = { confirmed: 'Confirm',  pending: 'Set Pending', cancelled: 'Cancel' };
+const STATUS_ICONS  = { confirmed: 'fa-circle-check', pending: 'fa-clock', cancelled: 'fa-ban' };
+
+function openStatusModal(bookingId, bookingCode, currentStatus, newStatus, passenger) {
+  pendingAction = { bookingId, bookingCode, newStatus, passenger };
+
+  const fromBadge = `<span class="modal-badge" style="background:${STATUS_BG[currentStatus]};color:${STATUS_COLORS[currentStatus]};">${currentStatus}</span>`;
+  const toBadge   = `<span class="modal-badge" style="background:${STATUS_BG[newStatus]};color:${STATUS_COLORS[newStatus]};">${newStatus}</span>`;
+
+  document.getElementById('modalTitle').innerHTML =
+    `<i class="fa-solid ${STATUS_ICONS[newStatus]}" style="color:${STATUS_COLORS[newStatus]};margin-right:6px;"></i>Change Booking Status`;
+  document.getElementById('modalBody').innerHTML =
+    `Change booking <strong>${bookingCode}</strong> for <strong>${passenger}</strong>
+     from ${fromBadge} to ${toBadge}?
+     ${newStatus === 'cancelled' ? '<br><span style="font-size:12px;color:var(--text-3);margin-top:6px;display:block;">The seat(s) will be released back to the schedule.</span>' : ''}
+     ${currentStatus === 'cancelled' && newStatus !== 'cancelled' ? '<br><span style="font-size:12px;color:var(--text-3);margin-top:6px;display:block;">The seat(s) will be deducted from available seats again.</span>' : ''}`;
+
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.style.background = STATUS_COLORS[newStatus];
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '8px';
+  btn.style.padding = '8px 20px';
+  btn.style.fontWeight = '700';
+  btn.style.cursor = 'pointer';
+  btn.textContent = STATUS_LABELS[newStatus];
+
+  document.getElementById('statusModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('statusModal').classList.remove('show');
+  pendingAction = null;
+}
+
+// Close modal on overlay click
+document.getElementById('statusModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+async function confirmStatusChange() {
+  if (!pendingAction) return;
+  const { bookingId, bookingCode, newStatus } = pendingAction;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>';
+
+  try {
+    const res  = await authFetch(`/api/admin/bookings/${bookingId}/status`, {
+      method: 'PUT',
+      body:   JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success(data.message || `Booking ${bookingCode} updated to ${newStatus}.`);
+      closeModal();
+      loadReport();  // refresh the table
+    } else {
+      Toast.error(data.error || 'Status update failed.');
+      btn.disabled = false;
+      btn.textContent = STATUS_LABELS[newStatus];
+    }
+  } catch {
+    Toast.error('Server error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = STATUS_LABELS[newStatus];
+  }
+}
+
+// ── Table rendering ─────────────────────────────────────────────
+function makeActionButtons(b) {
+  const s = b.status;
+  let btns = '';
+
+  if (s !== 'confirmed') {
+    btns += `<button class="btn-status btn-confirm"
+      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','confirmed','${(b.passenger||'').replace(/'/g,"\\'")}')">
+      <i class="fa-solid fa-circle-check"></i> Confirm
+    </button>`;
+  }
+  if (s !== 'pending') {
+    btns += `<button class="btn-status btn-pending"
+      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','pending','${(b.passenger||'').replace(/'/g,"\\'")}')">
+      <i class="fa-solid fa-clock"></i> Pending
+    </button>`;
+  }
+  if (s !== 'cancelled') {
+    btns += `<button class="btn-status btn-cancel"
+      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','cancelled','${(b.passenger||'').replace(/'/g,"\\'")}')">
+      <i class="fa-solid fa-ban"></i> Cancel
+    </button>`;
+  }
+  return `<div class="action-wrap">${btns}</div>`;
+}
+
 async function loadReport() {
-  const status  = document.getElementById('filterStatus').value;
-  const from    = document.getElementById('filterFrom').value;
-  const to      = document.getElementById('filterTo').value;
+  const status = document.getElementById('filterStatus').value;
+  const from   = document.getElementById('filterFrom').value;
+  const to     = document.getElementById('filterTo').value;
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
@@ -126,16 +276,16 @@ async function loadReport() {
   if (to)     params.set('to_date', to);
 
   const tbody = document.getElementById('reportBody');
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;" class="text-muted"><div class="spinner" style="margin:0 auto;"></div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;" class="text-muted"><div class="spinner" style="margin:0 auto;"></div></td></tr>';
 
   try {
-    const res  = await authFetch('/api/admin/bookings?'+params.toString());
+    const res  = await authFetch('/api/admin/bookings?' + params.toString());
     const data = await res.json();
     const list = data.bookings || [];
-    document.getElementById('reportCount').textContent = list.length+' records';
+    document.getElementById('reportCount').textContent = list.length + ' records';
 
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;" class="text-muted">No bookings match the filter.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:32px;" class="text-muted">No bookings match the filter.</td></tr>';
       return;
     }
 
@@ -147,21 +297,25 @@ async function loadReport() {
           <div class="text-xs text-muted">${b.email}</div>
         </td>
         <td class="fw-600" style="font-size:13px;">${b.route}</td>
-        <td class="text-sm fw-600">${b.bus_name||'—'}</td>
-        <td class="text-sm"><span style="font-family:monospace;font-size:11px;background:var(--surface2);padding:2px 5px;border-radius:4px;">${b.bus_plate||'—'}</span></td>
+        <td class="text-sm fw-600">${b.bus_name || '—'}</td>
+        <td class="text-sm"><span style="font-family:monospace;font-size:11px;background:var(--surface2);padding:2px 5px;border-radius:4px;">${b.bus_plate || '—'}</span></td>
         <td class="text-sm">${b.travel_date}</td>
         <td class="text-sm">${b.seat_number}</td>
-        <td class="fw-600" style="color:var(--brand-darker);">₱${Number(b.amount||0).toFixed(2)}</td>
+        <td class="fw-600" style="color:var(--brand-darker);">₱${Number(b.amount || 0).toFixed(2)}</td>
         <td class="text-sm">${b.payment_method}</td>
-        <td><span class="badge badge-${b.status==='confirmed'?'green':b.status==='cancelled'?'red':'yellow'}">${b.status}</span></td>
+        <td><span class="badge badge-${b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'yellow'}">${b.status}</span></td>
+        <td>${makeActionButtons(b)}</td>
       </tr>`).join('');
-  } catch { Toast.error('Failed to load report.'); }
+  } catch {
+    Toast.error('Failed to load report.');
+  }
 }
 
 window.onload = function() {
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
-  renderAdminUser(); loadReport();
+  if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
+  renderAdminUser();
+  loadReport();
 };
 </script>
 </body>
