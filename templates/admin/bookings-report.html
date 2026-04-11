@@ -10,7 +10,7 @@
 <style>
 /* Confirmation modal */
 .modal-overlay {
-  display: none; position: fixed; inset: 0; z-index: 200;
+  display: none; position: fixed; inset: 0; z-index: 400;
   background: rgba(0,0,0,0.45);
   align-items: center; justify-content: center;
 }
@@ -27,16 +27,124 @@
   display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px;
   font-weight: 700; margin: 0 2px;
 }
-/* Action button in table */
-.action-wrap { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
-.btn-status {
-  padding: 3px 10px; border: none; border-radius: 6px; font-size: 11px; font-weight: 700;
-  cursor: pointer; transition: opacity .15s; white-space: nowrap;
+/* Action dropdown */
+.action-wrap { position: relative; display: inline-block; }
+.action-menu-btn {
+  padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 7px;
+  background: var(--surface); font-size: 12px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; color: var(--text-1);
+  transition: background .15s, box-shadow .15s; white-space: nowrap;
 }
-.btn-status:hover { opacity: .8; }
+.action-menu-btn:hover { background: var(--surface2); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.action-dropdown {
+  display: none; position: fixed; z-index: 999;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  min-width: 175px; overflow: hidden;
+}
+.action-dropdown.open { display: block; }
+.action-dropdown-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 14px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+  transition: background .12s; color: var(--text-1);
+}
+.action-dropdown-item:hover { background: var(--surface2); }
+.action-dropdown-item.item-confirm { color: #065f46; }
+.action-dropdown-item.item-confirm:hover { background: #D1FAE5; }
+.action-dropdown-item.item-pending { color: #92400E; }
+.action-dropdown-item.item-pending:hover { background: #FEF3C7; }
+.action-dropdown-item.item-cancel  { color: #b45309; }
+.action-dropdown-item.item-cancel:hover  { background: #FEF3C7; }
+.action-dropdown-item.item-delete  { color: #991b1b; }
+.action-dropdown-item.item-delete:hover  { background: #FEE2E2; }
+.action-dropdown-divider { border: none; border-top: 1px solid var(--border); margin: 3px 0; }
 .btn-cancel   { background: #FEE2E2; color: #991b1b; }
 .btn-confirm  { background: #D1FAE5; color: #065f46; }
 .btn-pending  { background: #FEF3C7; color: #92400E; }
+.btn-delete   { background: #991b1b; color: #fff; }
+
+/* Delete History button */
+.btn-trash-history {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 8px; border: 1.5px solid #FECACA;
+  background: #FFF5F5; color: #991b1b; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s, box-shadow .15s; position: relative;
+  white-space: nowrap;
+}
+.btn-trash-history:hover { background: #FEE2E2; box-shadow: 0 2px 8px rgba(153,27,27,.15); }
+.trash-count-badge {
+  background: #991b1b; color: #fff; border-radius: 20px;
+  font-size: 10px; font-weight: 800; padding: 1px 7px; min-width: 18px; text-align: center;
+}
+
+/* Trash Drawer */
+.trash-drawer-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.35);
+}
+.trash-drawer-overlay.show { display: block; }
+.trash-drawer {
+  position: fixed; top: 0; right: -700px; width: min(700px, 100vw); height: 100vh;
+  background: var(--surface); box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+  z-index: 301; transition: right .3s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column;
+}
+.trash-drawer.open { right: 0; }
+.trash-drawer-header {
+  padding: 22px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.trash-drawer-header h2 {
+  flex: 1; font-size: 17px; font-weight: 700; margin: 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.trash-drawer-header h2 i { color: #991b1b; }
+.trash-drawer-close {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--text-3); padding: 4px 8px; border-radius: 6px;
+  transition: background .15s;
+}
+.trash-drawer-close:hover { background: var(--surface2); }
+.trash-drawer-body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+.trash-drawer-footer {
+  padding: 14px 24px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.trash-count-label { font-size: 13px; color: var(--text-2); }
+
+/* Trash item card */
+.trash-card {
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 10px; background: var(--surface);
+  transition: box-shadow .15s;
+}
+.trash-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.trash-card-top {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;
+}
+.trash-card-code {
+  font-family: monospace; font-size: 12px; background: #FEE2E2;
+  color: #991b1b; padding: 2px 8px; border-radius: 5px; font-weight: 700;
+}
+.trash-card-passenger { font-size: 13px; font-weight: 700; flex: 1; }
+.trash-card-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.trash-card-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn-restore {
+  padding: 5px 14px; border: none; border-radius: 7px; font-size: 12px; font-weight: 700;
+  cursor: pointer; background: #D1FAE5; color: #065f46; transition: opacity .15s;
+}
+.btn-restore:hover { opacity: .8; }
+.btn-perm-delete {
+  padding: 5px 14px; border: none; border-radius: 7px; font-size: 12px; font-weight: 700;
+  cursor: pointer; background: #991b1b; color: #fff; transition: opacity .15s;
+}
+.btn-perm-delete:hover { opacity: .8; }
+.trash-empty {
+  text-align: center; padding: 48px 20px; color: var(--text-3);
+}
+.trash-empty i { font-size: 36px; margin-bottom: 10px; display: block; opacity: .4; }
+.trash-empty p { font-size: 14px; }
 </style>
 </head>
 <body>
@@ -56,6 +164,7 @@
         <a href="/admin/revenue" id="navRevenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
         <a href="/admin/bookings-report" id="navReport"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
         <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+        <a href="/admin/messages"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span> Messages</a>
       </nav>
     </div>
     <div class="sidebar-section">
@@ -80,6 +189,10 @@
   <div class="admin-main">
     <div class="admin-topbar">
       <div class="admin-topbar-title">Bookings Report</div>
+      <button class="btn-trash-history" onclick="openTrashDrawer()">
+        <i class="fa-solid fa-clock-rotate-left"></i> Delete History
+        <span class="trash-count-badge" id="trashCountBadge" style="display:none;"></span>
+      </button>
     </div>
     <div class="admin-body">
 
@@ -151,6 +264,73 @@
   </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box">
+    <h3 style="color:#991b1b;"><i class="fa-solid fa-trash" style="margin-right:6px;"></i>Delete Booking</h3>
+    <p id="deleteModalBody">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn" id="deleteConfirmBtn" onclick="confirmDelete()"
+        style="background:#991b1b;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">
+        <i class="fa-solid fa-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Trash Drawer Overlay -->
+<div class="trash-drawer-overlay" id="trashOverlay" onclick="closeTrashDrawer()"></div>
+
+<!-- Trash Drawer -->
+<div class="trash-drawer" id="trashDrawer">
+  <div class="trash-drawer-header">
+    <h2><i class="fa-solid fa-trash-clock"></i> Delete History</h2>
+    <span class="badge" id="trashDrawerBadge" style="background:#FEE2E2;color:#991b1b;font-size:12px;"></span>
+    <button class="trash-drawer-close" onclick="closeTrashDrawer()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="trash-drawer-body" id="trashDrawerBody">
+    <div class="trash-empty"><i class="fa-solid fa-trash"></i><p>No deleted bookings.</p></div>
+  </div>
+  <div class="trash-drawer-footer">
+    <span class="trash-count-label" id="trashFooterLabel"></span>
+    <button class="btn" id="emptyTrashBtn" onclick="confirmEmptyTrash()"
+      style="background:#991b1b;color:#fff;font-size:12px;padding:7px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;display:none;">
+      <i class="fa-solid fa-fire"></i> Empty Trash
+    </button>
+  </div>
+</div>
+
+<!-- Permanent Delete Confirm Modal -->
+<div class="modal-overlay" id="permDeleteModal">
+  <div class="modal-box">
+    <h3 style="color:#991b1b;"><i class="fa-solid fa-fire" style="margin-right:6px;"></i>Permanent Delete</h3>
+    <p id="permDeleteBody">This will permanently erase the booking. It cannot be recovered.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePermDeleteModal()">Cancel</button>
+      <button class="btn" id="permDeleteConfirmBtn" onclick="confirmPermDelete()"
+        style="background:#991b1b;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">
+        <i class="fa-solid fa-fire"></i> Delete Forever
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Empty Trash Confirm Modal -->
+<div class="modal-overlay" id="emptyTrashModal">
+  <div class="modal-box">
+    <h3 style="color:#991b1b;"><i class="fa-solid fa-fire" style="margin-right:6px;"></i>Empty Trash</h3>
+    <p>This will permanently erase <strong>all</strong> deleted bookings. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('emptyTrashModal').classList.remove('show')">Cancel</button>
+      <button class="btn" onclick="emptyTrash()"
+        style="background:#991b1b;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">
+        <i class="fa-solid fa-fire"></i> Empty All
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/admin.js"></script>
@@ -209,6 +389,52 @@ function closeModal() {
 document.getElementById('statusModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+
+// ── Delete modal state ──────────────────────────────────────────
+let pendingDelete = null;  // { bookingId, bookingCode, passenger }
+
+function openDeleteModal(bookingId, bookingCode, passenger) {
+  pendingDelete = { bookingId, bookingCode, passenger };
+  document.getElementById('deleteModalBody').innerHTML =
+    `Permanently delete booking <strong>${bookingCode}</strong> for <strong>${passenger}</strong>?
+     <br><span style="font-size:12px;color:var(--text-3);margin-top:6px;display:block;">
+     This cannot be undone. Any held seats will be released back to the schedule.</span>`;
+  document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('show');
+  pendingDelete = null;
+}
+
+async function confirmDelete() {
+  if (!pendingDelete) return;
+  const { bookingId, bookingCode } = pendingDelete;
+  const btn = document.getElementById('deleteConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>';
+
+  try {
+    const res  = await authFetch(`/api/admin/bookings/${bookingId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success(data.message || `Booking ${bookingCode} deleted.`);
+      closeDeleteModal();
+      loadReport();
+    } else {
+      Toast.error(data.error || 'Delete failed.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-trash"></i> Delete';
+    }
+  } catch {
+    Toast.error('Server error. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-trash"></i> Delete';
+  }
+}
 
 async function confirmStatusChange() {
   if (!pendingAction) return;
@@ -225,8 +451,10 @@ async function confirmStatusChange() {
     const data = await res.json();
     if (res.ok) {
       Toast.success(data.message || `Booking ${bookingCode} updated to ${newStatus}.`);
+      btn.disabled = false;
+      btn.textContent = STATUS_LABELS[newStatus];
       closeModal();
-      loadReport();  // refresh the table
+      loadReport();
     } else {
       Toast.error(data.error || 'Status update failed.');
       btn.disabled = false;
@@ -240,29 +468,78 @@ async function confirmStatusChange() {
 }
 
 // ── Table rendering ─────────────────────────────────────────────
-function makeActionButtons(b) {
-  const s = b.status;
-  let btns = '';
+let activeDropdown = null;
 
+function toggleActionMenu(e, bookingId) {
+  e.stopPropagation();
+  const btn      = e.currentTarget;
+  const dropdown = document.getElementById('dd-' + bookingId);
+
+  // Close any other open dropdown
+  if (activeDropdown && activeDropdown !== dropdown) {
+    activeDropdown.classList.remove('open');
+  }
+
+  if (dropdown.classList.contains('open')) {
+    dropdown.classList.remove('open');
+    activeDropdown = null;
+    return;
+  }
+
+  const rect = btn.getBoundingClientRect();
+  dropdown.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+  dropdown.style.left = Math.max(4, rect.right + window.scrollX - 180) + 'px';
+  dropdown.classList.add('open');
+  activeDropdown = dropdown;
+}
+
+// Close dropdown when clicking outside — use capture so it runs first
+document.addEventListener('click', function() {
+  if (activeDropdown) { activeDropdown.classList.remove('open'); activeDropdown = null; }
+}, true);
+
+function closeAllDropdowns() {
+  if (activeDropdown) { activeDropdown.classList.remove('open'); activeDropdown = null; }
+}
+
+function makeActionButtons(b) {
+  const s  = b.status;
+  const p  = (b.passenger || '').replace(/'/g, "\\'");
+  const c  = b.booking_code;
+  const id = b.id;
+
+  let items = '';
   if (s !== 'confirmed') {
-    btns += `<button class="btn-status btn-confirm"
-      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','confirmed','${(b.passenger||'').replace(/'/g,"\\'")}')">
-      <i class="fa-solid fa-circle-check"></i> Confirm
+    items += `<button class="action-dropdown-item item-confirm"
+      onclick="event.stopPropagation();closeAllDropdowns();openStatusModal(${id},'${c}','${s}','confirmed','${p}')">
+      <i class="fa-solid fa-circle-check" style="width:14px;"></i> Confirm
     </button>`;
   }
   if (s !== 'pending') {
-    btns += `<button class="btn-status btn-pending"
-      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','pending','${(b.passenger||'').replace(/'/g,"\\'")}')">
-      <i class="fa-solid fa-clock"></i> Pending
+    items += `<button class="action-dropdown-item item-pending"
+      onclick="event.stopPropagation();closeAllDropdowns();openStatusModal(${id},'${c}','${s}','pending','${p}')">
+      <i class="fa-solid fa-clock" style="width:14px;"></i> Set Pending
     </button>`;
   }
   if (s !== 'cancelled') {
-    btns += `<button class="btn-status btn-cancel"
-      onclick="openStatusModal(${b.id},'${b.booking_code}','${s}','cancelled','${(b.passenger||'').replace(/'/g,"\\'")}')">
-      <i class="fa-solid fa-ban"></i> Cancel
+    items += `<button class="action-dropdown-item item-cancel"
+      onclick="event.stopPropagation();closeAllDropdowns();openStatusModal(${id},'${c}','${s}','cancelled','${p}')">
+      <i class="fa-solid fa-ban" style="width:14px;"></i> Cancel
     </button>`;
   }
-  return `<div class="action-wrap">${btns}</div>`;
+  items += `<hr class="action-dropdown-divider">`;
+  items += `<button class="action-dropdown-item item-delete"
+    onclick="event.stopPropagation();closeAllDropdowns();openDeleteModal(${id},'${c}','${p}')">
+    <i class="fa-solid fa-trash" style="width:14px;"></i> Move to Trash
+  </button>`;
+
+  return `
+  <div class="action-wrap">
+    <button class="action-menu-btn" onclick="toggleActionMenu(event,${id})">
+      Actions <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+    </button>
+    <div class="action-dropdown" id="dd-${id}">${items}</div>
+  </div>`;
 }
 
 async function loadReport() {
@@ -311,11 +588,187 @@ async function loadReport() {
   }
 }
 
+// ── Trash Drawer ────────────────────────────────────────────────
+async function openTrashDrawer() {
+  document.getElementById('trashDrawer').classList.add('open');
+  document.getElementById('trashOverlay').classList.add('show');
+  await loadTrash();
+}
+
+function closeTrashDrawer() {
+  document.getElementById('trashDrawer').classList.remove('open');
+  document.getElementById('trashOverlay').classList.remove('show');
+}
+
+async function loadTrash() {
+  const body = document.getElementById('trashDrawerBody');
+  body.innerHTML = '<div style="text-align:center;padding:32px;"><div class="spinner" style="margin:0 auto;"></div></div>';
+
+  try {
+    const res  = await authFetch('/api/admin/bookings/deleted');
+    const data = await res.json();
+    const list = data.bookings || [];
+
+    // Update badge counts
+    const badge = document.getElementById('trashDrawerBadge');
+    const topBadge = document.getElementById('trashCountBadge');
+    const footer = document.getElementById('trashFooterLabel');
+    const emptyBtn = document.getElementById('emptyTrashBtn');
+
+    badge.textContent = list.length + ' items';
+    if (list.length > 0) {
+      topBadge.textContent = list.length;
+      topBadge.style.display = 'inline-block';
+      footer.textContent = list.length + ' deleted booking(s)';
+      emptyBtn.style.display = 'inline-flex';
+    } else {
+      topBadge.style.display = 'none';
+      footer.textContent = '';
+      emptyBtn.style.display = 'none';
+    }
+
+    if (!list.length) {
+      body.innerHTML = '<div class="trash-empty"><i class="fa-solid fa-trash"></i><p>No deleted bookings. The trash is empty.</p></div>';
+      return;
+    }
+
+    body.innerHTML = list.map(b => `
+      <div class="trash-card" id="trash-card-${b.id}">
+        <div class="trash-card-top">
+          <div>
+            <span class="trash-card-code">${b.booking_code}</span>
+            <div class="trash-card-passenger" style="margin-top:5px;">${b.passenger}</div>
+            <div class="trash-card-meta">${b.email}</div>
+          </div>
+          <div style="text-align:right;margin-left:auto;flex-shrink:0;">
+            <span class="badge badge-${b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'yellow'}" style="font-size:11px;">${b.status}</span>
+            <div class="trash-card-meta" style="margin-top:4px;">₱${Number(b.amount||0).toFixed(2)}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text-2);margin-bottom:4px;">
+          <span><i class="fa-solid fa-route" style="width:14px;"></i> ${b.route}</span>
+          <span><i class="fa-solid fa-calendar" style="width:14px;"></i> ${b.travel_date}</span>
+          <span><i class="fa-solid fa-chair" style="width:14px;"></i> Seat ${b.seat_number}</span>
+          <span><i class="fa-solid fa-credit-card" style="width:14px;"></i> ${b.payment_method}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">
+          <i class="fa-solid fa-trash-clock"></i> Deleted ${b.deleted_at} by ${b.deleted_by}
+        </div>
+        <div class="trash-card-actions">
+          <button class="btn-restore" onclick="restoreBooking(${b.id},'${b.booking_code}')">
+            <i class="fa-solid fa-rotate-left"></i> Restore
+          </button>
+          <button class="btn-perm-delete" onclick="openPermDeleteModal(${b.id},'${b.booking_code}','${(b.passenger||'').replace(/'/g,"\\'")}')">
+            <i class="fa-solid fa-fire"></i> Delete Permanently
+          </button>
+        </div>
+      </div>`).join('');
+  } catch {
+    document.getElementById('trashDrawerBody').innerHTML =
+      '<div class="trash-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Failed to load trash.</p></div>';
+  }
+}
+
+async function restoreBooking(bookingId, bookingCode) {
+  try {
+    const res  = await authFetch(`/api/admin/bookings/${bookingId}/restore`, { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success(data.message || `Booking ${bookingCode} restored.`);
+      await loadTrash();
+      loadReport();
+    } else {
+      Toast.error(data.error || 'Restore failed.');
+    }
+  } catch {
+    Toast.error('Server error. Please try again.');
+  }
+}
+
+// ── Permanent Delete Modal ───────────────────────────────────────
+let pendingPermDelete = null;
+
+function openPermDeleteModal(bookingId, bookingCode, passenger) {
+  pendingPermDelete = { bookingId, bookingCode };
+  document.getElementById('permDeleteBody').innerHTML =
+    `Permanently erase booking <strong>${bookingCode}</strong> for <strong>${passenger}</strong>?
+     <br><span style="font-size:12px;color:var(--text-3);margin-top:6px;display:block;">This cannot be recovered.</span>`;
+  document.getElementById('permDeleteModal').classList.add('show');
+}
+
+function closePermDeleteModal() {
+  document.getElementById('permDeleteModal').classList.remove('show');
+  pendingPermDelete = null;
+}
+
+async function confirmPermDelete() {
+  if (!pendingPermDelete) return;
+  const { bookingId, bookingCode } = pendingPermDelete;
+  const btn = document.getElementById('permDeleteConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>';
+
+  try {
+    const res  = await authFetch(`/api/admin/bookings/${bookingId}/permanent`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success(data.message || `Booking ${bookingCode} permanently deleted.`);
+      closePermDeleteModal();
+      await loadTrash();
+    } else {
+      Toast.error(data.error || 'Delete failed.');
+    }
+  } catch {
+    Toast.error('Server error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-fire"></i> Delete Forever';
+  }
+}
+
+function confirmEmptyTrash() {
+  document.getElementById('emptyTrashModal').classList.add('show');
+}
+
+async function emptyTrash() {
+  document.getElementById('emptyTrashModal').classList.remove('show');
+  // Get all deleted booking IDs and delete them one by one
+  try {
+    const res  = await authFetch('/api/admin/bookings/deleted');
+    const data = await res.json();
+    const list = data.bookings || [];
+    await Promise.all(list.map(b =>
+      authFetch(`/api/admin/bookings/${b.id}/permanent`, { method: 'DELETE' })
+    ));
+    Toast.success(`Trash emptied. ${list.length} booking(s) permanently deleted.`);
+    await loadTrash();
+  } catch {
+    Toast.error('Failed to empty trash.');
+  }
+}
+
+// Close perm delete modal on overlay click
+document.getElementById('permDeleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closePermDeleteModal();
+});
+document.getElementById('emptyTrashModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
 window.onload = function() {
   const user = JSON.parse(localStorage.getItem('currentUser'));
   if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
   renderAdminUser();
   loadReport();
+  // Load trash count for badge on page load
+  authFetch('/api/admin/bookings/deleted').then(r => r.json()).then(data => {
+    const count = (data.bookings || []).length;
+    if (count > 0) {
+      const badge = document.getElementById('trashCountBadge');
+      badge.textContent = count;
+      badge.style.display = 'inline-block';
+    }
+  }).catch(() => {});
 };
 </script>
 </body>

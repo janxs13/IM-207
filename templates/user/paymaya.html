@@ -33,9 +33,12 @@
 .back-link:hover { color:#00A859; }
 .err-bar { background:var(--red-bg); color:#991b1b; border:1px solid rgba(239,68,68,.3); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; align-items:center; gap:8px; }
 .err-bar.show { display:flex; }
+
+.demo-banner{display:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;position:sticky;top:0;z-index:100;}
 </style>
 </head>
 <body>
+<div id="demoBanner" class="demo-banner"><i class="fa-solid fa-flask-vial"></i> ADMIN DEMO MODE — No real payment processed <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:8px;">Preview Only</span></div>
 <div class="passenger-layout">
   <nav class="topnav">
     <a href="/" class="topnav-brand">
@@ -110,6 +113,7 @@
 <script src="/static/js/auth.js"></script>
 <script>
 const booking  = JSON.parse(localStorage.getItem('currentBooking') || '{}');
+if (booking.is_demo) document.getElementById('demoBanner').style.display='block';
 const user     = JSON.parse(localStorage.getItem('currentUser') || '{}');
 const amount   = parseFloat(
   localStorage.getItem('selectedPrice') ||
@@ -167,6 +171,19 @@ async function submitPayMaya() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing payment…';
+
+  // DEMO MODE: skip real payment
+  if (booking.is_demo) {
+    const demoRef = 'DEMO-REF-' + Math.random().toString(36).substr(2,8).toUpperCase();
+    localStorage.setItem('receiptPayment', 'PayMaya');
+    localStorage.setItem('receiptRef',      demoRef);
+    localStorage.setItem('lastBookingCode', booking.booking_code || 'DEMO');
+    localStorage.setItem('receiptAmount',   amount);
+    const updated = { ...booking, payment_method: 'PayMaya', reference_no: demoRef, status: 'confirmed', amount: amount };
+    localStorage.setItem('currentBooking', JSON.stringify(updated));
+    window.location.href = '/receipt?code=' + (booking.booking_code || 'DEMO') + '&demo=1';
+    return;
+  }
 
   const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
   try {

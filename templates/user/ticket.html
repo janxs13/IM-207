@@ -86,9 +86,12 @@
   background:var(--surface); border-radius:16px; padding:32px 40px;
   text-align:center; box-shadow:var(--shadow-lg);
 }
+
+.demo-banner{display:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;position:sticky;top:0;z-index:100;}
 </style>
 </head>
 <body>
+<div id="demoBanner" class="demo-banner"><i class="fa-solid fa-flask-vial"></i> ADMIN DEMO MODE — This is a walkthrough preview only <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:8px;">No Data Saved</span></div>
 <div class="passenger-layout">
   <nav class="topnav no-print">
     <a href="/" class="topnav-brand">
@@ -267,6 +270,18 @@ window.onload = async function() {
   // The code to look up — prefer lastBookingCode (actual booking code), fall back to receiptRef
   const code    = localStorage.getItem('lastBookingCode') || localStorage.getItem('receiptRef') || '';
   let   booking = JSON.parse(localStorage.getItem('currentBooking')) || {};
+
+  // DEMO MODE: skip API fetch
+  if (booking.is_demo) {
+    document.getElementById('demoBanner').style.display = 'block';
+    populateTicket(booking, user);
+    // Hide QR and PDF download for demo
+    const qrBox = document.querySelector('.qr-box');
+    if (qrBox) qrBox.innerHTML = '<div style="text-align:center;padding:16px;border-top:2px dashed var(--border);"><span style="font-size:13px;color:var(--text-3);"><i class=\"fa-solid fa-flask-vial\"></i> QR not generated in demo mode</span></div>';
+    const dlBtn = document.getElementById('downloadBtn');
+    if (dlBtn) dlBtn.style.display = 'none';
+    return;
+  }
 
   // Always fetch fresh from API when we have a booking code — ensures seat_number is up to date
   if (code && code !== '—') {

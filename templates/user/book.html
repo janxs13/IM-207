@@ -73,6 +73,21 @@
   background: var(--brand-light); border-radius: 6px;
   padding: 2px 7px; display: inline-block; margin-top: 3px;
 }
+
+/* Demo mode banner */
+.demo-banner {
+  display: none;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff; padding: 10px 16px;
+  text-align: center; font-size: 13px; font-weight: 700;
+  letter-spacing: .02em; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(124,58,237,.3);
+}
+.demo-banner i { margin-right: 6px; }
+.demo-badge {
+  display: inline-block; background: rgba(255,255,255,.25);
+  border-radius: 20px; padding: 1px 8px; font-size: 11px; margin-left: 8px;
+}
 </style>
 </head>
 <body>
@@ -389,6 +404,35 @@ async function createBookingAndGo(schedule, pax, total) {
   const date = document.getElementById('travelDate').value ||
                new Date().toISOString().split('T')[0];
 
+  // ── DEMO MODE: admin preview — skip API, generate fake booking ──
+  if (user && user.role === 'admin') {
+    const demoCode = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    const booking = {
+      id:              0,
+      booking_code:    demoCode,
+      is_demo:         true,
+      route:           schedule.route,
+      departure_time:  schedule.departure_time || '—',
+      arrival_time:    schedule.arrival_time   || '—',
+      travel_date:     date,
+      seat_number:     null,
+      amount:          parseFloat(total),
+      fare_per_seat:   parseFloat(schedule.fare || schedule.price || 0),
+      total_fare:      parseFloat(total),
+      passenger_count: pax,
+      status:          'pending',
+      schedule_id:     schedule.id,
+      bus_name:        schedule.bus_name   || null,
+      bus_plate:       schedule.bus_plate  || null,
+      seat_layout:     schedule.seat_layout || '4-column',
+      total_seats:     schedule.total_seats || 40,
+    };
+    localStorage.setItem('currentBooking', JSON.stringify(booking));
+    localStorage.setItem('passengerCount', String(pax));
+    window.location.href = '/seat-selection';
+    return;
+  }
+
   try {
     const res  = await authFetch('/api/bookings/', {
       method: 'POST',
@@ -402,7 +446,6 @@ async function createBookingAndGo(schedule, pax, total) {
     const data = await res.json();
 
     if (res.ok) {
-      // Attach passenger count, fare details, total to the booking object
       const booking = {
         ...data.booking,
         passenger_count: pax,
@@ -431,6 +474,11 @@ window.onload = async function() {
 
   // Refresh totals whenever passenger count changes
   document.getElementById('passengerCount').addEventListener('input', refreshTotals);
+
+  // Show demo banner for admin
+  if (user && user.role === 'admin') {
+    document.getElementById('demoBanner').style.display = 'block';
+  }
 
   try {
     const res = await authFetch('/api/schedules/');

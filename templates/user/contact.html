@@ -157,7 +157,7 @@ function sendMessage() {
 
   const phone = (document.getElementById('contactPhone') || {}).value || '';
 
-  fetch('/api/contact', {
+  fetch('/api/contact/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, email, phone, subject, message })
@@ -174,11 +174,7 @@ function sendMessage() {
     }
   })
   .catch(() => {
-    // Fallback: show success UI even if backend unreachable (offline/demo)
-    document.getElementById('successMsg').style.display = 'flex';
-    document.getElementById('contactMessage').value = '';
-    Toast.success('Message sent!');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    Toast.error('Could not send your message. Check your connection and try again.');
   })
   .finally(() => {
     btn.disabled = false;

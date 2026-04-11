@@ -16,3 +16,5 @@ class Booking(db.Model):
     locked_until    = db.Column(db.DateTime)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
     verify_count    = db.Column(db.Integer, default=0)
+    deleted_at      = db.Column(db.DateTime, nullable=True, default=None)
+    deleted_by      = db.Column(db.String(100), nullable=True, default=None)

@@ -28,9 +28,12 @@
 .trip-detail:last-child { border-bottom:none; }
 .trip-detail .lbl { font-size:14px;color:var(--text-3); }
 .trip-detail .val { font-size:14px;font-weight:600;color:var(--text-1); }
+
+.demo-banner{display:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;position:sticky;top:0;z-index:100;}
 </style>
 </head>
 <body>
+<div id="demoBanner" class="demo-banner"><i class="fa-solid fa-flask-vial"></i> ADMIN DEMO MODE — Payment will NOT be processed <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:8px;">Preview Only</span></div>
 <div class="passenger-layout">
   <nav class="topnav">
     <a href="/" class="topnav-brand">
@@ -145,6 +148,7 @@ function authFetch(url, opts={}) {
 
 window.onload = async function() {
   let booking = JSON.parse(localStorage.getItem('currentBooking'))||{};
+  if (booking.is_demo) document.getElementById('demoBanner').style.display='block';
 
   // Defensive fallback: if seat is missing but we have a booking code, re-fetch from API
   const seatMissing = !booking.seat_number || booking.seat_number === '—' || booking.seat_number === 'null';

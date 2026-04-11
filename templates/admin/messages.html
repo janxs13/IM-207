@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messages — BusBook Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+<div class="admin-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-bus" style="color:#fff;font-size:18px;"></i></div>
+      <div><div class="brand-name">BusBook</div><span class="brand-sub">Admin Panel</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <nav>
+        <a href="/admin"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Dashboard</a>
+        <a href="/admin/users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Passengers</a>
+        <a href="/admin/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Schedules</a>
+        <a href="/admin/buses"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Fleet</a>
+        <a href="/admin/revenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
+        <a href="/admin/bookings-report"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
+        <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
+        <a href="/admin/messages" class="active"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span> Messages <span id="unreadBadge" class="badge" style="display:none;background:var(--danger);color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;"></span></a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <nav>
+        <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
+        <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
+        <a href="/login" onclick="localStorage.removeItem('currentUser');localStorage.removeItem('access_token');"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Contact Messages</h1>
+        <p class="page-subtitle">Messages submitted by passengers via the contact form.</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+          <input type="checkbox" id="unreadFilter" onchange="loadMessages()"> Unread only
+        </label>
+        <button class="btn btn-secondary btn-sm" onclick="loadMessages()">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:16px;margin-bottom:24px;">
+      <div class="stat-card" style="flex:1;">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Total Messages</div>
+      </div>
+      <div class="stat-card" style="flex:1;">
+        <div class="stat-value" id="statUnread" style="color:var(--danger);">—</div>
+        <div class="stat-label">Unread</div>
+      </div>
+    </div>
+
+    <!-- Messages table -->
+    <div class="card">
+      <div class="card-body" style="padding:0;">
+        <table class="data-table" id="messagesTable">
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>Email</th>
+              <th>Subject</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="messagesBody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">Loading messages…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Message detail modal -->
+    <div id="msgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-3);">&times;</button>
+        <div id="msgModalBody"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const TOKEN = () => localStorage.getItem('access_token');
+
+async function loadMessages() {
+  const unreadOnly = document.getElementById('unreadFilter').checked;
+  const url = '/api/contact/' + (unreadOnly ? '?unread=true' : '');
+  try {
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN() } });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+
+    document.getElementById('statTotal').textContent  = data.total;
+    document.getElementById('statUnread').textContent = data.unread;
+
+    const badge = document.getElementById('unreadBadge');
+    if (data.unread > 0) { badge.textContent = data.unread; badge.style.display = ''; }
+    else                 { badge.style.display = 'none'; }
+
+    const tbody = document.getElementById('messagesBody');
+    if (data.messages.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">No messages found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.messages.map(m => `
+      <tr style="${m.is_read ? '' : 'font-weight:600;background:var(--surface-2,#f8f9ff);'}">
+        <td>${esc(m.name)}</td>
+        <td><a href="mailto:${esc(m.email)}" style="color:var(--brand);">${esc(m.email)}</a></td>
+        <td>${esc(m.subject)}</td>
+        <td style="white-space:nowrap;">${m.created_at}</td>
+        <td>
+          <span class="badge" style="background:${m.is_read ? 'var(--success-light,#e6f7ee)' : 'var(--warning-light,#fff3e0)'};
+                color:${m.is_read ? 'var(--success)' : 'var(--warning)'};padding:3px 10px;border-radius:8px;">
+            ${m.is_read ? 'Read' : 'Unread'}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick="viewMessage(${m.id})" title="View">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          ${!m.is_read ? `<button class="btn btn-primary btn-sm" onclick="markRead(${m.id})" title="Mark read" style="margin-left:4px;">
+            <i class="fa-solid fa-check"></i>
+          </button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteMsg(${m.id})" title="Delete" style="margin-left:4px;">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { showError('Network error. Please try again.'); }
+}
+
+let currentMessages = [];
+async function viewMessage(id) {
+  const res = await fetch('/api/contact/', { headers: { Authorization: 'Bearer ' + TOKEN() } });
+  const data = await res.json();
+  const m = data.messages.find(x => x.id === id);
+  if (!m) return;
+
+  document.getElementById('msgModalBody').innerHTML = `
+    <h3 style="margin:0 0 16px;font-size:18px;">${esc(m.subject)}</h3>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin-bottom:20px;">
+      <span style="color:var(--text-3);font-weight:600;">From</span>   <span>${esc(m.name)}</span>
+      <span style="color:var(--text-3);font-weight:600;">Email</span>  <span><a href="mailto:${esc(m.email)}" style="color:var(--brand);">${esc(m.email)}</a></span>
+      <span style="color:var(--text-3);font-weight:600;">Date</span>   <span>${m.created_at}</span>
+      <span style="color:var(--text-3);font-weight:600;">Status</span> <span>${m.is_read ? '✓ Read' : '● Unread'}</span>
+    </div>
+    <div style="background:var(--surface-2,#f5f5f5);border-radius:10px;padding:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;">${esc(m.message)}</div>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <a href="mailto:${esc(m.email)}?subject=Re: ${esc(m.subject)}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-reply"></i> Reply by Email
+      </a>
+      ${!m.is_read ? `<button class="btn btn-secondary btn-sm" onclick="markRead(${m.id});closeModal();">
+        <i class="fa-solid fa-check"></i> Mark as Read
+      </button>` : ''}
+    </div>
+  `;
+  document.getElementById('msgModal').style.display = 'flex';
+
+  // Auto-mark as read when opened
+  if (!m.is_read) markRead(id);
+}
+
+function closeModal() {
+  document.getElementById('msgModal').style.display = 'none';
+}
+
+async function markRead(id) {
+  await fetch(`/api/contact/${id}/read`, {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + TOKEN() }
+  });
+  loadMessages();
+}
+
+async function deleteMsg(id) {
+  if (!confirm('Delete this message? This cannot be undone.')) return;
+  const res = await fetch(`/api/contact/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + TOKEN() }
+  });
+  if (res.ok) loadMessages();
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showError(msg) {
+  document.getElementById('messagesBody').innerHTML =
+    `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--danger);">${esc(msg)}</td></tr>`;
+}
+
+// Close modal on backdrop click
+document.getElementById('msgModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Auth guard
+const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+if (!user || user.role !== 'admin') { location.href = '/login'; }
+
+loadMessages();
+</script>
+</body>
+</html>

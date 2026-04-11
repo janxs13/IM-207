@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
+from utils.decorators import admin_required
 from models.booking import Booking
 from models.schedule import Schedule
 from models.user import User
@@ -9,11 +10,13 @@ verify_bp = Blueprint("verify", __name__)
 
 @verify_bp.route("/<code>", methods=["GET"])
 @jwt_required()
+@admin_required
 def verify_by_code(code):
     return _do_verify(code)
 
 @verify_bp.route("/ticket/<code>", methods=["GET"])
 @jwt_required()
+@admin_required
 def verify_ticket(code):
     return _do_verify(code)
 

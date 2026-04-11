@@ -16,9 +16,12 @@
 .btn-primary:hover{background:var(--brand-dark);transform:translateY(-1px);}
 .btn-secondary{padding:12px 20px;background:var(--surface2);color:var(--text-1);border:1px solid var(--border-dark);border-radius:10px;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;}
 .btn-secondary:hover{background:var(--border);}
+
+.demo-banner{display:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;position:sticky;top:0;z-index:100;}
 </style>
 </head>
 <body>
+<div id="demoBanner" class="demo-banner"><i class="fa-solid fa-flask-vial"></i> ADMIN DEMO MODE — This is a walkthrough preview only <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:8px;">No Data Saved</span></div>
 <div class="passenger-layout">
   <nav class="topnav">
     <a href="/" class="topnav-brand">
@@ -90,6 +93,25 @@ document.addEventListener('DOMContentLoaded', loadReceipt);
 async function loadReceipt() {
   const params      = new URLSearchParams(window.location.search);
   const bookingCode = params.get('code') || localStorage.getItem('lastBookingCode');
+  const isDemo      = params.get('demo') === '1';
+  const booking     = JSON.parse(localStorage.getItem('currentBooking') || '{}');
+
+  // DEMO MODE: show receipt from localStorage without hitting API
+  if (isDemo || booking.is_demo) {
+    document.getElementById('demoBanner').style.display = 'block';
+    renderReceipt({
+      booking_code:   booking.booking_code || 'DEMO-XXXX',
+      route:          booking.route        || '—',
+      travel_date:    booking.travel_date  || '—',
+      departure_time: booking.departure_time || '—',
+      seat_number:    booking.seat_number  || 'Demo Seat',
+      passenger_count: booking.passenger_count || 1,
+      payment_method: booking.payment_method || localStorage.getItem('receiptPayment') || 'Demo',
+      reference_no:   booking.reference_no   || localStorage.getItem('receiptRef')    || 'DEMO-REF',
+      amount:         booking.amount          || parseFloat(localStorage.getItem('receiptAmount') || '0'),
+    });
+    return;
+  }
 
   if (!bookingCode) {
     showError('No booking code found. Please check your profile for your bookings.');

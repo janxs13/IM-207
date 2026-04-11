@@ -17,7 +17,8 @@ def release_expired_seats():
     expired = Booking.query.filter(
         Booking.status.in_(["locked", "pending"]),
         Booking.locked_until != None,
-        Booking.locked_until < now
+        Booking.locked_until < now,
+        Booking.deleted_at.is_(None)
     ).all()
 
     for booking in expired:

@@ -124,9 +124,12 @@ html, body {
 }
 .confirm-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(244,162,97,0.45); }
 .confirm-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }
+
+.demo-banner{display:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(124,58,237,.3);}
 </style>
 </head>
 <body>
+<div id="demoBanner" class="demo-banner"><i class="fa-solid fa-flask-vial"></i> ADMIN DEMO MODE — No data will be saved <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:8px;">Preview Only</span></div>
 <div class="passenger-layout">
   <nav class="topnav">
     <a href="/" class="topnav-brand">
@@ -254,6 +257,8 @@ document.getElementById('busNameDisplay').textContent = busName  || '—';
 document.getElementById('busPlateDisplay').textContent= busPlate || '—';
 document.getElementById('fareDisplay').textContent    = '₱' + fare.toFixed(2);
 document.getElementById('seatsNeeded').textContent    = passengerCount + ' seat(s)';
+if (booking.is_demo) { document.getElementById('demoBanner').style.display='block'; }
+
 document.getElementById('availDisplay').textContent   = schedule.seats_available ?? schedule.available_seats ?? '—';
 document.getElementById('seatsBadge').innerHTML       = `Select <strong>${passengerCount}</strong> seat(s)`;
 
@@ -410,6 +415,28 @@ async function confirmSeats() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reserving…';
 
   try {
+    // DEMO MODE: skip API call
+    if (booking.is_demo) {
+      const seatStr = selectedSeats.join(', ');
+      const updated = {
+        ...booking,
+        seat_number:     seatStr,
+        seats:           selectedSeats,
+        passenger_count: passengerCount,
+        fare_per_seat:   fare,
+        total_fare:      total,
+        bus_name:        busName,
+        bus_plate:       busPlate,
+        seat_layout:     seatLayout,
+      };
+      localStorage.setItem('currentBooking', JSON.stringify(updated));
+      localStorage.setItem('selectedSeats',  JSON.stringify(selectedSeats));
+      localStorage.setItem('selectedPrice',  total);
+      localStorage.setItem('farePerSeat',    fare.toFixed(2));
+      window.location.href = '/transaction';
+      return;
+    }
+
     const res = await authFetch('/api/bookings/select-seat', {
       method: 'POST',
       body: JSON.stringify({ booking_id: booking.id, seat_number: selectedSeats.join(', ') })
