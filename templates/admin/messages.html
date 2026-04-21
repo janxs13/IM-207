@@ -26,7 +26,7 @@
         <a href="/admin/revenue"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Revenue</a>
         <a href="/admin/bookings-report"><span class="nav-icon"><i class="fa-solid fa-table-list"></i></span> Bookings Report</a>
         <a href="/admin/verify"><span class="nav-icon"><i class="fa-solid fa-qrcode"></i></span> Verify Ticket</a>
-        <a href="/admin/messages" class="active"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span> Messages <span id="unreadBadge" class="badge" style="display:none;background:var(--danger);color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;"></span></a>
+        <a href="/admin/messages" class="active"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span> Messages <span id="unreadBadge" class="badge" style="display:none;background:var(--red);color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;"></span></a>
       </nav>
     </div>
     <div class="sidebar-section">
@@ -39,63 +39,82 @@
     </div>
   </aside>
 
-  <main class="main-content">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">Contact Messages</h1>
-        <p class="page-subtitle">Messages submitted by passengers via the contact form.</p>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
-          <input type="checkbox" id="unreadFilter" onchange="loadMessages()"> Unread only
-        </label>
-        <button class="btn btn-secondary btn-sm" onclick="loadMessages()">
-          <i class="fa-solid fa-rotate-right"></i> Refresh
-        </button>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-topbar-title">Contact Messages</div>
+      <div class="admin-topbar-actions">
+        <span class="text-sm text-muted">Messages submitted by passengers via the contact form.</span>
       </div>
     </div>
 
-    <!-- Stats row -->
-    <div style="display:flex;gap:16px;margin-bottom:24px;">
-      <div class="stat-card" style="flex:1;">
-        <div class="stat-value" id="statTotal">—</div>
-        <div class="stat-label">Total Messages</div>
+    <div class="admin-body">
+      <div class="admin-card messages-toolbar-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-envelope" style="color:var(--brand);"></i> Inbox Controls</div>
+          <div class="messages-toolbar-actions">
+            <label class="messages-filter-toggle">
+              <input type="checkbox" id="unreadFilter" onchange="loadMessages()"> Unread only
+            </label>
+            <button class="btn btn-outline btn-sm" onclick="loadMessages()">
+              <i class="fa-solid fa-rotate-right"></i> Refresh
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="stat-card" style="flex:1;">
-        <div class="stat-value" id="statUnread" style="color:var(--danger);">—</div>
-        <div class="stat-label">Unread</div>
-      </div>
-    </div>
 
-    <!-- Messages table -->
-    <div class="card">
-      <div class="card-body" style="padding:0;">
-        <table class="data-table" id="messagesTable">
-          <thead>
-            <tr>
-              <th>From</th>
-              <th>Email</th>
-              <th>Subject</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="messagesBody">
-            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">Loading messages…</td></tr>
-          </tbody>
-        </table>
+      <div class="messages-stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fa-solid fa-envelope-open-text"></i></div>
+          <div>
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">Total Messages</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="fa-solid fa-envelope-circle-check"></i></div>
+          <div>
+            <div class="stat-value message-stat-unread" id="statUnread">—</div>
+            <div class="stat-label">Unread</div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Message detail modal -->
-    <div id="msgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
-      <div style="background:var(--surface);border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative;">
-        <button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-3);">&times;</button>
-        <div id="msgModalBody"></div>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <div class="admin-card-title"><i class="fa-solid fa-inbox" style="color:var(--brand);"></i> Recent Messages</div>
+        </div>
+        <div class="table-wrap">
+          <table id="messagesTable">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>Email</th>
+                <th>Subject</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="messagesBody">
+              <tr><td colspan="6" class="messages-empty">Loading messages...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </main>
+    <footer>BusBook Admin &copy; 2026</footer>
+  </div>
+</div>
+
+<!-- Message detail modal -->
+<div id="msgModal" class="admin-modal">
+  <div class="admin-modal-box messages-modal-box">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title">Message Details</div>
+      <button class="modal-close-btn" onclick="closeModal()" aria-label="Close message">&times;</button>
+    </div>
+    <div id="msgModalBody" class="admin-modal-body"></div>
+  </div>
 </div>
 
 <script>
@@ -118,30 +137,29 @@ async function loadMessages() {
 
     const tbody = document.getElementById('messagesBody');
     if (data.messages.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-3);">No messages found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="messages-empty">No messages found.</td></tr>';
       return;
     }
 
     tbody.innerHTML = data.messages.map(m => `
-      <tr style="${m.is_read ? '' : 'font-weight:600;background:var(--surface-2,#f8f9ff);'}">
+      <tr class="${m.is_read ? '' : 'message-row-unread'}">
         <td>${esc(m.name)}</td>
-        <td><a href="mailto:${esc(m.email)}" style="color:var(--brand);">${esc(m.email)}</a></td>
+        <td><a class="message-email-link" href="mailto:${esc(m.email)}">${esc(m.email)}</a></td>
         <td>${esc(m.subject)}</td>
-        <td style="white-space:nowrap;">${m.created_at}</td>
+        <td class="message-date">${m.created_at}</td>
         <td>
-          <span class="badge" style="background:${m.is_read ? 'var(--success-light,#e6f7ee)' : 'var(--warning-light,#fff3e0)'};
-                color:${m.is_read ? 'var(--success)' : 'var(--warning)'};padding:3px 10px;border-radius:8px;">
+          <span class="badge ${m.is_read ? 'badge-green' : 'badge-yellow'}">
             ${m.is_read ? 'Read' : 'Unread'}
           </span>
         </td>
-        <td>
-          <button class="btn btn-secondary btn-sm" onclick="viewMessage(${m.id})" title="View">
+        <td class="message-actions">
+          <button class="btn btn-outline btn-sm" onclick="viewMessage(${m.id})" title="View">
             <i class="fa-solid fa-eye"></i>
           </button>
-          ${!m.is_read ? `<button class="btn btn-primary btn-sm" onclick="markRead(${m.id})" title="Mark read" style="margin-left:4px;">
+          ${!m.is_read ? `<button class="btn btn-primary btn-sm" onclick="markRead(${m.id})" title="Mark read">
             <i class="fa-solid fa-check"></i>
           </button>` : ''}
-          <button class="btn btn-danger btn-sm" onclick="deleteMsg(${m.id})" title="Delete" style="margin-left:4px;">
+          <button class="btn btn-danger btn-sm" onclick="deleteMsg(${m.id})" title="Delete">
             <i class="fa-solid fa-trash"></i>
           </button>
         </td>
@@ -158,31 +176,31 @@ async function viewMessage(id) {
   if (!m) return;
 
   document.getElementById('msgModalBody').innerHTML = `
-    <h3 style="margin:0 0 16px;font-size:18px;">${esc(m.subject)}</h3>
-    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin-bottom:20px;">
-      <span style="color:var(--text-3);font-weight:600;">From</span>   <span>${esc(m.name)}</span>
-      <span style="color:var(--text-3);font-weight:600;">Email</span>  <span><a href="mailto:${esc(m.email)}" style="color:var(--brand);">${esc(m.email)}</a></span>
-      <span style="color:var(--text-3);font-weight:600;">Date</span>   <span>${m.created_at}</span>
-      <span style="color:var(--text-3);font-weight:600;">Status</span> <span>${m.is_read ? '✓ Read' : '● Unread'}</span>
+    <h3 class="messages-modal-subject">${esc(m.subject)}</h3>
+    <div class="messages-modal-meta">
+      <span class="messages-modal-label">From</span>   <span>${esc(m.name)}</span>
+      <span class="messages-modal-label">Email</span>  <span><a class="message-email-link" href="mailto:${esc(m.email)}">${esc(m.email)}</a></span>
+      <span class="messages-modal-label">Date</span>   <span>${m.created_at}</span>
+      <span class="messages-modal-label">Status</span> <span>${m.is_read ? 'Read' : 'Unread'}</span>
     </div>
-    <div style="background:var(--surface-2,#f5f5f5);border-radius:10px;padding:16px;font-size:14px;line-height:1.7;white-space:pre-wrap;">${esc(m.message)}</div>
-    <div style="margin-top:20px;display:flex;gap:10px;">
+    <div class="messages-modal-content">${esc(m.message)}</div>
+    <div class="messages-modal-actions">
       <a href="mailto:${esc(m.email)}?subject=Re: ${esc(m.subject)}" class="btn btn-primary btn-sm">
         <i class="fa-solid fa-reply"></i> Reply by Email
       </a>
-      ${!m.is_read ? `<button class="btn btn-secondary btn-sm" onclick="markRead(${m.id});closeModal();">
+      ${!m.is_read ? `<button class="btn btn-outline btn-sm" onclick="markRead(${m.id});closeModal();">
         <i class="fa-solid fa-check"></i> Mark as Read
       </button>` : ''}
     </div>
   `;
-  document.getElementById('msgModal').style.display = 'flex';
+  document.getElementById('msgModal').classList.add('open');
 
   // Auto-mark as read when opened
   if (!m.is_read) markRead(id);
 }
 
 function closeModal() {
-  document.getElementById('msgModal').style.display = 'none';
+  document.getElementById('msgModal').classList.remove('open');
 }
 
 async function markRead(id) {
@@ -208,7 +226,7 @@ function esc(str) {
 
 function showError(msg) {
   document.getElementById('messagesBody').innerHTML =
-    `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--danger);">${esc(msg)}</td></tr>`;
+    `<tr><td colspan="6" class="messages-empty messages-error">${esc(msg)}</td></tr>`;
 }
 
 // Close modal on backdrop click

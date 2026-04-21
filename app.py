@@ -2,7 +2,7 @@ import threading
 import time
 import sqlite3
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect
 from config import Config
 from extensions import db, jwt, socketio, limiter, mail
 
@@ -124,6 +124,8 @@ def create_app():
     def admin_buses():        return render_template("admin/manage-buses.html")
     @app.route("/admin/verify")
     def admin_verify():       return render_template("admin/verify-ticket.html")
+    @app.route("/verify/<code>")
+    def scan_verify(code):    return redirect(f"/admin/verify?code={code}")
     @app.route("/admin/revenue")
     def admin_revenue():      return render_template("admin/revenue.html")
     @app.route("/admin/bookings-report")

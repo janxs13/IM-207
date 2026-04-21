@@ -1,0 +1,20 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+exclude = [
+  "venv",
+  "__pycache__",
+  "instance",
+  "static/qrcodes",
+]
+
+[tool.ruff.lint]
+# High-signal lint rules for legacy codebase:
+# - E9: syntax/runtime parse errors
+# - F63/F7/F82: invalid/undefined-name classes of bugs
+select = ["E9", "F63", "F7", "F82"]

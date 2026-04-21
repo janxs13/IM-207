@@ -74,6 +74,71 @@
 }
 .scan-1 { background: #D1FAE5; color: #065f46; }
 .scan-2 { background: #FEF3C7; color: #92400E; }
+
+/* Camera QR scanner panel */
+.scan-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.scanner-wrap {
+  display: none;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.scanner-wrap.active {
+  display: block;
+}
+
+#reader {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Result flash feedback */
+.result-flash-success {
+  animation: flashSuccess 0.55s ease;
+}
+.result-flash-warning {
+  animation: flashWarning 0.55s ease;
+}
+.result-flash-error {
+  animation: flashError 0.55s ease;
+}
+@keyframes flashSuccess {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  30%  { box-shadow: 0 0 0 6px rgba(16,185,129,0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+}
+@keyframes flashWarning {
+  0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+  30%  { box-shadow: 0 0 0 6px rgba(245,158,11,0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+@keyframes flashError {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  30%  { box-shadow: 0 0 0 6px rgba(239,68,68,0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
 </style>
 </head>
 <body>
@@ -145,6 +210,24 @@
             <button class="btn btn-primary btn-lg" style="width:100%;" id="verifyBtn" onclick="verifyTicketCode()">
               <i class="fa-solid fa-magnifying-glass"></i> Verify Ticket
             </button>
+            <div class="scan-tools">
+              <button class="btn btn-outline btn-sm" id="startScanBtn" onclick="startScanner()">
+                <i class="fa-solid fa-camera"></i> Start QR Scan
+              </button>
+              <button class="btn btn-danger btn-sm" id="stopScanBtn" onclick="stopScanner()" style="display:none;">
+                <i class="fa-solid fa-stop"></i> Stop Scan
+              </button>
+              <label class="sound-toggle" title="Enable or disable scan sound alerts">
+                <input type="checkbox" id="soundToggle" checked onchange="toggleSound(this.checked)">
+                Sound alerts
+              </label>
+            </div>
+            <div id="scannerWrap" class="scanner-wrap">
+              <div id="reader"></div>
+              <p class="text-muted text-sm" style="margin-top:8px;text-align:center;">
+                Point camera at passenger QR code to auto-verify.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -159,8 +242,15 @@
 <div id="toast-container"></div>
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/admin.js"></script>
+<script src="https://unpkg.com/html5-qrcode" defer></script>
 <script>
 document.getElementById('navVerify').classList.add('active');
+
+let qrScanner = null;
+let scannerActive = false;
+let scanCooldown = false;
+let audioCtx = null;
+let soundEnabled = true;
 
 const STATE_CONFIG = {
   valid_first: {
@@ -273,6 +363,8 @@ async function verifyTicketCode() {
         ` : ''}
       </div>`;
 
+    applyScanFeedback(state);
+
     // Auto-clear the input so staff can scan the next passenger quickly
     if (state === 'valid_first') {
       setTimeout(() => {
@@ -289,12 +381,168 @@ async function verifyTicketCode() {
   }
 }
 
+function getFeedbackType(state) {
+  if (state === 'valid_first') return 'success';
+  if (state === 'valid_warning') return 'warning';
+  return 'error';
+}
+
+function flashResult(type) {
+  const card = document.querySelector('#verifyResult .result-card');
+  if (!card) return;
+  const cls = type === 'success'
+    ? 'result-flash-success'
+    : type === 'warning'
+      ? 'result-flash-warning'
+      : 'result-flash-error';
+  card.classList.remove('result-flash-success', 'result-flash-warning', 'result-flash-error');
+  // Restart animation on repeated scans.
+  void card.offsetWidth;
+  card.classList.add(cls);
+}
+
+function ensureAudioContext() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+function beep(freq, durationMs, gainValue, type='sine', startOffset=0) {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime + startOffset;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = 0;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(gainValue, now + 0.01);
+  gain.gain.linearRampToValueAtTime(0, now + (durationMs / 1000));
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + (durationMs / 1000) + 0.02);
+}
+
+function playFeedbackTone(type) {
+  if (!soundEnabled) return;
+  if (type === 'success') {
+    beep(880, 110, 0.06, 'sine', 0);
+    beep(1175, 120, 0.06, 'sine', 0.12);
+    return;
+  }
+  if (type === 'warning') {
+    beep(740, 140, 0.06, 'triangle', 0);
+    beep(740, 140, 0.06, 'triangle', 0.16);
+    return;
+  }
+  beep(280, 220, 0.07, 'square', 0);
+}
+
+function applyScanFeedback(state) {
+  const type = getFeedbackType(state);
+  flashResult(type);
+  playFeedbackTone(type);
+}
+
+function toggleSound(enabled) {
+  soundEnabled = Boolean(enabled);
+  localStorage.setItem('verify_sound_enabled', soundEnabled ? '1' : '0');
+}
+
+function extractBookingCode(decodedText) {
+  const raw = String(decodedText || '').trim();
+  if (!raw) return '';
+  // If QR contains a URL (e.g. /verify/ABC123), take last path segment.
+  if (/^https?:\/\//i.test(raw)) {
+    const parts = raw.split('/').filter(Boolean);
+    return (parts[parts.length - 1] || '').toUpperCase();
+  }
+  return raw.toUpperCase();
+}
+
+async function startScanner() {
+  if (scannerActive) return;
+  if (typeof Html5Qrcode === 'undefined') {
+    Toast.error('QR scanner library failed to load. Please refresh.');
+    return;
+  }
+
+  const scannerWrap = document.getElementById('scannerWrap');
+  scannerWrap.classList.add('active');
+  document.getElementById('startScanBtn').style.display = 'none';
+  document.getElementById('stopScanBtn').style.display = '';
+
+  qrScanner = new Html5Qrcode('reader');
+  try {
+    await qrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      async (decodedText) => {
+        if (scanCooldown) return;
+        scanCooldown = true;
+
+        const code = extractBookingCode(decodedText);
+        if (!code) {
+          Toast.warning('Unable to read booking code from QR.');
+          scanCooldown = false;
+          return;
+        }
+
+        document.getElementById('ticketCode').value = code;
+        await verifyTicketCode();
+        setTimeout(() => { scanCooldown = false; }, 2000);
+      }
+    );
+    scannerActive = true;
+  } catch (e) {
+    scannerWrap.classList.remove('active');
+    document.getElementById('startScanBtn').style.display = '';
+    document.getElementById('stopScanBtn').style.display = 'none';
+    Toast.error('Camera access denied or unavailable.');
+  }
+}
+
+async function stopScanner() {
+  if (!qrScanner || !scannerActive) return;
+  try { await qrScanner.stop(); } catch (e) {}
+  try { await qrScanner.clear(); } catch (e) {}
+  qrScanner = null;
+  scannerActive = false;
+  scanCooldown = false;
+  document.getElementById('scannerWrap').classList.remove('active');
+  document.getElementById('startScanBtn').style.display = '';
+  document.getElementById('stopScanBtn').style.display = 'none';
+}
+
 window.onload = function() {
   const user = JSON.parse(localStorage.getItem('currentUser'));
   if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
   renderAdminUser();
-  document.getElementById('ticketCode').focus();
+  soundEnabled = localStorage.getItem('verify_sound_enabled') !== '0';
+  const soundToggle = document.getElementById('soundToggle');
+  if (soundToggle) soundToggle.checked = soundEnabled;
+  const params = new URLSearchParams(window.location.search);
+  const codeFromUrl = (params.get('code') || '').trim().toUpperCase();
+  const input = document.getElementById('ticketCode');
+  if (codeFromUrl) {
+    input.value = codeFromUrl;
+    verifyTicketCode();
+  } else {
+    input.focus();
+  }
 };
+
+window.addEventListener('beforeunload', function() {
+  if (scannerActive) stopScanner();
+});
 </script>
 </body>
 </html>
