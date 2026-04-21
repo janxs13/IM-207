@@ -1,115 +1,136 @@
 # IM-207 BusBook
 
-Bus booking website (Passenger + Admin) built with Flask, Flask-SocketIO, and SQLite.
+Bus booking web app (Passenger + Admin) built with Flask, Flask-SocketIO, and SQLite.
 
-This guide is focused on running your **updated website from your laptop** and opening it from **another PC on the same network**.
+## Quick Start (3 commands)
 
-## 1) Requirements
+Run these in project root:
+
+```powershell
+python -m venv venv
+venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe app.py
+```
+
+Then open [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+## Step-by-step setup instructions
+
+## 1) Prerequisites
 
 - Windows 10/11
-- Python 3.12+ (your project currently uses Python 3.14 in `venv`)
-- Git (optional, for pulling updates)
+- Python 3.12+ (project currently uses Python 3.14 in `venv`)
+- Git (optional)
 
-## 2) First-time setup (on the host laptop)
+## 2) Clone or open project folder
+
+If needed:
+
+```powershell
+git clone <your-repo-url>
+cd IM-207
+```
+
+If you already have the folder, just open `E:\IM-207`.
+
+## 3) Create virtual environment
 
 From project root:
 
 ```powershell
 python -m venv venv
+```
+
+## 4) Install dependencies
+
+```powershell
 venv\Scripts\python.exe -m pip install --upgrade pip
 venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Create your env file:
+## 5) Configure environment variables
+
+Create your `.env` file:
 
 ```powershell
 copy .env.example .env
 ```
 
-Then edit `.env` with real values (`SECRET_KEY`, `JWT_SECRET_KEY`, mail settings if needed).
+Then edit `.env` and set real values such as:
 
-## 3) Database notes
+- `SECRET_KEY`
+- `JWT_SECRET_KEY`
+- Mail settings (if using password reset/contact email)
 
-- Default DB is SQLite (`instance/bus_ticketing.db`).
-- Your app auto-creates missing tables/columns at startup.
-- If this is the same project folder you already use, your data stays intact.
+## 6) Database setup
 
-## 4) Run locally (quick check)
+- Default database: `instance/bus_ticketing.db`
+- Tables are created automatically on app start.
+- Missing columns are migrated automatically by `_safe_migrate()` in `app.py`.
+
+## 7) Run the app locally
 
 ```powershell
 venv\Scripts\python.exe app.py
 ```
 
-Open on the host laptop:
+Open in browser:
 
 - [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-## 5) Run so another PC can open it (same Wi-Fi/LAN)
+## 8) Run app for other devices on same network (LAN)
 
-### A. Start server bound to all interfaces
-
-Use this PowerShell command from project root:
+Start server on all interfaces:
 
 ```powershell
 venv\Scripts\python.exe -c "from app import app, socketio; socketio.run(app, host='0.0.0.0', port=5000, debug=True)"
 ```
 
-### B. Find host laptop IP
+Get your host machine IPv4 address:
 
 ```powershell
 ipconfig
 ```
 
-Use the IPv4 address of your active adapter (example: `192.168.1.15`).
-
-### C. Open Windows Firewall (if blocked)
-
-Allow inbound TCP port `5000` for Private network.
-
-### D. Open from another PC
-
-On the second PC browser:
+From another device, open:
 
 - `http://<HOST_IP>:5000`
 - Example: [http://192.168.1.15:5000](http://192.168.1.15:5000)
 
-## 6) Keep code updated on another PC
+If blocked, allow inbound TCP `5000` in Windows Firewall (Private network).
 
-If both PCs have this repository, update with:
-
-```powershell
-git pull
-venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-Then run the same LAN command above.
-
-## 7) One-command health check (added)
-
-Before running in front of users, validate the app:
+## 9) Run one-command health scan (lint + tests + smoke checks)
 
 ```powershell
 scan.bat
 ```
 
-It runs:
+This runs:
 
-- Ruff lint
+- Ruff lint checks
 - Pytest smoke tests
 - Python compile checks
-- Flask app import/route smoke check
+- Flask import/route smoke check
 
-## 8) Common issues
+## 10) Admin and ticket verification notes
 
-- **Site opens on laptop but not on second PC**
-  - Server is likely running on `127.0.0.1` only. Use the LAN command with `host='0.0.0.0'`.
-- **Connection timed out**
-  - Wrong IP, different network, or firewall blocking port `5000`.
-- **QR scan opens wrong URL**
-  - Ensure admin verifies from `/admin/verify` (or `/verify/<code>` redirect flow).
-- **Missing package error**
+- Admin dashboard: `/admin`
+- Admin verify page: `/admin/verify`
+- QR links using `/verify/<code>` are supported and auto-redirect to admin verify.
+
+## 11) Update project later
+
+```powershell
+git pull
+venv\Scripts\python.exe -m pip install -r requirements.txt
+scan.bat
+```
+
+## 12) Troubleshooting
+
+- App opens on laptop but not other devices:
+  - Run with `host='0.0.0.0'` (LAN mode), not default localhost-only mode.
+- Missing module error:
   - Re-run `venv\Scripts\python.exe -m pip install -r requirements.txt`.
-
----
-
-If you want, I can also add a dedicated `run_lan.bat` so you don't need to type the long LAN command each time.
+- QR scan/verify issues:
+  - Verify from `/admin/verify` and ensure camera permission is allowed.
