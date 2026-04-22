@@ -23,3 +23,13 @@ class Config:
     # Explicit storage avoids Flask-Limiter in-memory UserWarning on startup.
     # For production with multiple workers, set e.g. RATELIMIT_STORAGE_URI=redis://localhost:6379/0
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+
+    # Mail config (Flask-Mail). If credentials are missing, run in console mode.
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+    MAIL_USE_TLS = str(os.environ.get("MAIL_USE_TLS", "true")).strip().lower() in ("1", "true", "yes", "on")
+    MAIL_USE_SSL = str(os.environ.get("MAIL_USE_SSL", "false")).strip().lower() in ("1", "true", "yes", "on")
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
+    MAIL_SUPPRESS_SEND = not bool(MAIL_USERNAME and MAIL_PASSWORD)

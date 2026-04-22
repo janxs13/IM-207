@@ -113,3 +113,30 @@ Reply to: {sender_email}
     except Exception as e:
         current_app.logger.error(f"[mailer] Failed to send admin notification: {e}")
         return False
+
+
+def send_admin_reply_to_contact(recipient_email: str, recipient_name: str, subject_text: str, reply_message: str):
+    """
+    Send an admin-written reply back to a contact form sender.
+    """
+    support_email = current_app.config.get("MAIL_USERNAME")
+    subject = f"Re: {subject_text}"
+    body = f"""Hello {recipient_name},
+
+{reply_message}
+
+---
+This reply was sent by BusBook Support.
+"""
+    msg = Message(
+        subject=subject,
+        recipients=[recipient_email],
+        body=body,
+        reply_to=support_email if support_email else None
+    )
+    try:
+        _send(msg)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"[mailer] Failed to send admin reply to {recipient_email}: {e}")
+        return False

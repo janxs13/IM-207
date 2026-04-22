@@ -1,12 +1,14 @@
 """
 Contact form API.
 
-POST /api/contact/       — submit a message (passenger-facing)
-GET  /api/contact/       — list all messages (admin only)
-PUT  /api/contact/<id>/read  — mark a message as read (admin only)
-DELETE /api/contact/<id>     — delete a message (admin only)
+POST   /api/contact/            — submit a message (passenger-facing)
+GET    /api/contact/            — list all messages (admin only)
+PUT    /api/contact/<id>/read   — mark a message as read (admin only)
+POST   /api/contact/<id>/reply  — send reply email (admin only)
+DELETE /api/contact/<id>        — delete a message (admin only)
 """
 import re
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from utils.decorators import admin_required
@@ -68,10 +70,21 @@ def submit():
 @admin_required
 def list_messages():
     unread_only = request.args.get("unread") == "true"
+    replied_only = request.args.get("replied") == "true"
     query = ContactMessage.query
-    if unread_only:
+
+    # If both filters are selected, no row can satisfy both states.
+    if unread_only and replied_only:
+        messages = []
+    elif unread_only:
         query = query.filter_by(is_read=False)
-    messages = query.order_by(ContactMessage.created_at.desc()).all()
+        messages = query.order_by(ContactMessage.created_at.desc()).all()
+    elif replied_only:
+        query = query.filter(ContactMessage.replied_at.isnot(None))
+        messages = query.order_by(ContactMessage.created_at.desc()).all()
+    else:
+        messages = query.order_by(ContactMessage.created_at.desc()).all()
+
     return jsonify({
         "messages": [m.to_dict() for m in messages],
         "total":    len(messages),
@@ -90,6 +103,39 @@ def mark_read(msg_id):
     msg.is_read = True
     db.session.commit()
     return jsonify({"message": "Marked as read"}), 200
+
+
+# ── POST /api/contact/<id>/reply — admin: send reply email ────────
+@contact_bp.route("/<int:msg_id>/reply", methods=["POST"])
+@jwt_required()
+@admin_required
+def reply_to_message(msg_id):
+    msg = ContactMessage.query.get(msg_id)
+    if not msg:
+        return jsonify({"error": "Message not found"}), 404
+
+    data = request.get_json() or {}
+    reply_message = (data.get("reply_message") or "").strip()
+    if not reply_message:
+        return jsonify({"error": "Reply message is required"}), 400
+    if len(reply_message) > 3000:
+        return jsonify({"error": "Reply is too long (max 3000 characters)"}), 400
+
+    from utils.mailer import send_admin_reply_to_contact
+    sent = send_admin_reply_to_contact(
+        recipient_email=msg.email,
+        recipient_name=msg.name,
+        subject_text=msg.subject,
+        reply_message=reply_message
+    )
+    if not sent:
+        return jsonify({"error": "Failed to send email reply"}), 500
+
+    # Treat replied messages as handled.
+    msg.is_read = True
+    msg.replied_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"message": "Reply email sent successfully"}), 200
 
 
 # ── DELETE /api/contact/<id> — admin: delete message ─────────────

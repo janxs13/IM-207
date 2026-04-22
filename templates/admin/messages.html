@@ -53,7 +53,10 @@
           <div class="admin-card-title"><i class="fa-solid fa-envelope" style="color:var(--brand);"></i> Inbox Controls</div>
           <div class="messages-toolbar-actions">
             <label class="messages-filter-toggle">
-              <input type="checkbox" id="unreadFilter" onchange="loadMessages()"> Unread only
+              <input type="checkbox" id="unreadFilter" onchange="onFilterChange('unread')"> Unread only
+            </label>
+            <label class="messages-filter-toggle">
+              <input type="checkbox" id="repliedFilter" onchange="onFilterChange('replied')"> Replied only
             </label>
             <button class="btn btn-outline btn-sm" onclick="loadMessages()">
               <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -117,16 +120,56 @@
   </div>
 </div>
 
+<!-- Reply email modal -->
+<div id="replyModal" class="admin-modal">
+  <div class="admin-modal-box messages-reply-modal-box">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title">Reply by Email</div>
+      <button class="modal-close-btn" onclick="closeReplyModal()" aria-label="Close reply">&times;</button>
+    </div>
+    <div class="admin-modal-body">
+      <div class="messages-reply-meta">
+        <span class="messages-modal-label">To</span>
+        <span id="replyToText">—</span>
+        <span class="messages-modal-label">Subject</span>
+        <span id="replySubjectText">—</span>
+      </div>
+      <label for="replyMessageText" class="messages-reply-label">Message</label>
+      <textarea id="replyMessageText" class="messages-reply-textarea" placeholder="Type your reply here..." rows="10"></textarea>
+      <p id="replyErrorText" class="messages-reply-error" style="display:none;"></p>
+    </div>
+    <div class="admin-modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeReplyModal()">Cancel</button>
+      <button id="replySendBtn" class="btn btn-primary btn-sm" onclick="sendReplyEmail()">
+        <i class="fa-solid fa-paper-plane"></i> Send Reply
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const TOKEN = () => localStorage.getItem('access_token');
 
+function onFilterChange(changed) {
+  const unread = document.getElementById('unreadFilter');
+  const replied = document.getElementById('repliedFilter');
+  if (changed === 'unread' && unread.checked) replied.checked = false;
+  if (changed === 'replied' && replied.checked) unread.checked = false;
+  loadMessages();
+}
+
 async function loadMessages() {
   const unreadOnly = document.getElementById('unreadFilter').checked;
-  const url = '/api/contact/' + (unreadOnly ? '?unread=true' : '');
+  const repliedOnly = document.getElementById('repliedFilter').checked;
+  const params = new URLSearchParams();
+  if (unreadOnly) params.set('unread', 'true');
+  if (repliedOnly) params.set('replied', 'true');
+  const url = '/api/contact/' + (params.toString() ? `?${params.toString()}` : '');
   try {
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN() } });
     const data = await res.json();
     if (!res.ok) { showError(data.error); return; }
+    currentMessages = data.messages || [];
 
     document.getElementById('statTotal').textContent  = data.total;
     document.getElementById('statUnread').textContent = data.unread;
@@ -136,22 +179,18 @@ async function loadMessages() {
     else                 { badge.style.display = 'none'; }
 
     const tbody = document.getElementById('messagesBody');
-    if (data.messages.length === 0) {
+    if (currentMessages.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="messages-empty">No messages found.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = data.messages.map(m => `
+    tbody.innerHTML = currentMessages.map(m => `
       <tr class="${m.is_read ? '' : 'message-row-unread'}">
         <td>${esc(m.name)}</td>
         <td><a class="message-email-link" href="mailto:${esc(m.email)}">${esc(m.email)}</a></td>
         <td>${esc(m.subject)}</td>
         <td class="message-date">${m.created_at}</td>
-        <td>
-          <span class="badge ${m.is_read ? 'badge-green' : 'badge-yellow'}">
-            ${m.is_read ? 'Read' : 'Unread'}
-          </span>
-        </td>
+        <td>${renderMessageStatus(m)}</td>
         <td class="message-actions">
           <button class="btn btn-outline btn-sm" onclick="viewMessage(${m.id})" title="View">
             <i class="fa-solid fa-eye"></i>
@@ -169,10 +208,15 @@ async function loadMessages() {
 }
 
 let currentMessages = [];
+let activeReplyMessageId = null;
 async function viewMessage(id) {
-  const res = await fetch('/api/contact/', { headers: { Authorization: 'Bearer ' + TOKEN() } });
-  const data = await res.json();
-  const m = data.messages.find(x => x.id === id);
+  let m = currentMessages.find(x => x.id === id);
+  if (!m) {
+    const res = await fetch('/api/contact/', { headers: { Authorization: 'Bearer ' + TOKEN() } });
+    const data = await res.json();
+    currentMessages = data.messages || [];
+    m = currentMessages.find(x => x.id === id);
+  }
   if (!m) return;
 
   document.getElementById('msgModalBody').innerHTML = `
@@ -181,13 +225,14 @@ async function viewMessage(id) {
       <span class="messages-modal-label">From</span>   <span>${esc(m.name)}</span>
       <span class="messages-modal-label">Email</span>  <span><a class="message-email-link" href="mailto:${esc(m.email)}">${esc(m.email)}</a></span>
       <span class="messages-modal-label">Date</span>   <span>${m.created_at}</span>
-      <span class="messages-modal-label">Status</span> <span>${m.is_read ? 'Read' : 'Unread'}</span>
+      <span class="messages-modal-label">Status</span> <span>${m.is_replied ? 'Replied' : (m.is_read ? 'Read' : 'Unread')}</span>
+      ${m.replied_at ? `<span class="messages-modal-label">Replied At</span> <span>${m.replied_at}</span>` : ''}
     </div>
     <div class="messages-modal-content">${esc(m.message)}</div>
     <div class="messages-modal-actions">
-      <a href="mailto:${esc(m.email)}?subject=Re: ${esc(m.subject)}" class="btn btn-primary btn-sm">
+      <button class="btn btn-primary btn-sm" onclick="replyByEmail(${m.id})">
         <i class="fa-solid fa-reply"></i> Reply by Email
-      </a>
+      </button>
       ${!m.is_read ? `<button class="btn btn-outline btn-sm" onclick="markRead(${m.id});closeModal();">
         <i class="fa-solid fa-check"></i> Mark as Read
       </button>` : ''}
@@ -220,8 +265,86 @@ async function deleteMsg(id) {
   if (res.ok) loadMessages();
 }
 
+async function replyByEmail(id) {
+  const m = currentMessages.find(x => x.id === id);
+  if (!m) { alert('Message not found. Please refresh and try again.'); return; }
+
+  activeReplyMessageId = id;
+  document.getElementById('replyToText').textContent = `${m.name} <${m.email}>`;
+  document.getElementById('replySubjectText').textContent = `Re: ${m.subject}`;
+  document.getElementById('replyMessageText').value =
+    `Hello ${m.name},\n\nThank you for your message about "${m.subject}".\n\n`;
+  hideReplyError();
+  document.getElementById('replyModal').classList.add('open');
+  document.getElementById('replyMessageText').focus();
+}
+
+function closeReplyModal() {
+  activeReplyMessageId = null;
+  document.getElementById('replyModal').classList.remove('open');
+  hideReplyError();
+}
+
+function setReplySendingState(isSending) {
+  const sendBtn = document.getElementById('replySendBtn');
+  const textarea = document.getElementById('replyMessageText');
+  sendBtn.disabled = isSending;
+  textarea.disabled = isSending;
+  sendBtn.innerHTML = isSending
+    ? '<i class="fa-solid fa-spinner fa-spin"></i> Sending...'
+    : '<i class="fa-solid fa-paper-plane"></i> Send Reply';
+}
+
+function showReplyError(message) {
+  const el = document.getElementById('replyErrorText');
+  el.textContent = message;
+  el.style.display = '';
+}
+
+function hideReplyError() {
+  const el = document.getElementById('replyErrorText');
+  el.textContent = '';
+  el.style.display = 'none';
+}
+
+async function sendReplyEmail() {
+  if (!activeReplyMessageId) return;
+  const replyText = (document.getElementById('replyMessageText').value || '').trim();
+  if (!replyText) { showReplyError('Reply message cannot be empty.'); return; }
+  if (replyText.length > 3000) { showReplyError('Reply is too long (max 3000 characters).'); return; }
+
+  hideReplyError();
+  setReplySendingState(true);
+  const res = await fetch(`/api/contact/${activeReplyMessageId}/reply`, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + TOKEN(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ reply_message: replyText })
+  });
+  const data = await res.json();
+  setReplySendingState(false);
+
+  if (!res.ok) { showReplyError(data.error || 'Failed to send reply email.'); return; }
+  alert('Reply email sent successfully.');
+  closeReplyModal();
+  closeModal();
+  loadMessages();
+}
+
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderMessageStatus(m) {
+  if (m.is_replied) {
+    return '<span class="badge badge-blue">Replied</span>';
+  }
+  if (m.is_read) {
+    return '<span class="badge badge-green">Read</span>';
+  }
+  return '<span class="badge badge-yellow">Unread</span>';
 }
 
 function showError(msg) {
@@ -232,6 +355,9 @@ function showError(msg) {
 // Close modal on backdrop click
 document.getElementById('msgModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
+});
+document.getElementById('replyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReplyModal();
 });
 
 // Auth guard

@@ -514,3 +514,48 @@
   align-items: center;
   gap: 10px;
 }
+
+.messages-reply-modal-box {
+  max-width: 680px;
+}
+
+.messages-reply-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.messages-reply-label {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.messages-reply-textarea {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--border-dark);
+  border-radius: 10px;
+  padding: 12px 14px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.messages-reply-textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.messages-reply-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--red);
+}
