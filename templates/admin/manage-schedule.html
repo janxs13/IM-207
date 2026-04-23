@@ -7,6 +7,69 @@
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/admin.css">
 <title>Schedules — BusBook Admin</title>
+<style>
+/* Tab switcher */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.tab-btn {
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: var(--font-body);
+}
+.tab-btn:hover { color: var(--text-1); }
+.tab-btn.active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+.tab-btn .tab-count {
+  background: var(--surface2);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.tab-btn.active .tab-count {
+  background: var(--brand-light);
+  color: var(--brand-darker);
+}
+/* Expired count pill — red */
+.tab-btn .tab-count-expired {
+  background: rgba(220,38,38,0.12);
+  color: #dc2626;
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Expired row styling in expired table */
+.expired-row td { opacity: 0.75; }
+.badge-expired {
+  background: rgba(220,38,38,0.12);
+  color: #dc2626;
+  border: 1px solid rgba(220,38,38,0.3);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+</style>
 </head>
 <body>
 <div class="admin-layout">
@@ -33,42 +96,93 @@
       <nav>
         <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
         <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
-        <a href="/login" onclick="localStorage.clear()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+        <a href="/login" onclick="Auth.logout(); return false;"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
       </nav>
     </div>
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="sidebar-avatar" id="sidebarAvatar">A</div>
-        <div><div class="sidebar-user-name" id="sidebarUserName">Administrator</div><div class="sidebar-user-role">Admin</div></div>
+        <div>
+          <div class="sidebar-user-name" id="sidebarUserName">Administrator</div>
+          <div class="sidebar-user-role">Admin</div>
+        </div>
       </div>
     </div>
   </aside>
+
   <div class="admin-main">
     <div class="admin-topbar">
       <div class="admin-topbar-title">Schedule Management</div>
       <div class="admin-topbar-actions">
-        <button class="btn btn-primary" onclick="openModal('schedModal')"><i class="fa-solid fa-plus"></i> Add Schedule</button>
+        <button class="btn btn-primary" onclick="openAddModal()">
+          <i class="fa-solid fa-plus"></i> Add Schedule
+        </button>
       </div>
     </div>
+
     <div class="admin-body">
       <div class="admin-card">
         <div class="admin-card-header">
-          <div class="admin-card-title"><i class="fa-solid fa-calendar-days" style="color:var(--brand);"></i> All Schedules</div>
-          <span class="badge badge-brand" id="schedCount"></span>
+          <div class="admin-card-title">
+            <i class="fa-solid fa-calendar-days" style="color:var(--brand);"></i> Schedules
+          </div>
         </div>
-        <div class="table-wrap">
+
+        <!-- TAB BAR -->
+        <div class="tab-bar" style="padding:0 20px;">
+          <button class="tab-btn active" id="tabActive" onclick="switchTab('active')">
+            <i class="fa-solid fa-circle-check" style="color:var(--green);"></i>
+            Active
+            <span class="tab-count" id="activeCount">0</span>
+          </button>
+          <button class="tab-btn" id="tabExpired" onclick="switchTab('expired')">
+            <i class="fa-solid fa-clock-rotate-left" style="color:#dc2626;"></i>
+            Expired
+            <span class="tab-count-expired" id="expiredCount">0</span>
+          </button>
+        </div>
+
+        <!-- ACTIVE SCHEDULES TABLE -->
+        <div id="panelActive" class="table-wrap">
           <table>
-            <thead><tr><th>Route</th><th>Bus</th><th>Departure</th><th>Arrival</th><th>Fare</th><th>Seats</th><th>Actions</th></tr></thead>
-            <tbody id="schedTableBody"><tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr></tbody>
+            <thead>
+              <tr>
+                <th>Route</th><th>Bus</th><th>Departure</th>
+                <th>Arrival</th><th>Fare</th><th>Seats</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="activeTableBody">
+              <tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+            </tbody>
           </table>
         </div>
+
+        <!-- EXPIRED SCHEDULES TABLE -->
+        <div id="panelExpired" class="table-wrap" style="display:none;">
+          <div style="padding:12px 20px 4px;font-size:12px;color:#dc2626;font-weight:600;">
+            <i class="fa-solid fa-circle-info"></i>
+            These schedules have passed their departure date. Use <b>Reschedule</b> to set a new future date and make them available again on the Book page.
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Route</th><th>Bus</th><th>Was Scheduled</th>
+                <th>Fare</th><th>Seats</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="expiredTableBody">
+              <tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </div>
     <footer>BusBook Admin &copy; 2026</footer>
   </div>
 </div>
 
-<!-- Add Schedule Modal -->
+<!-- ── ADD SCHEDULE MODAL ──────────────────────────────────────── -->
 <div class="admin-modal" id="schedModal">
   <div class="admin-modal-box">
     <div class="admin-modal-header">
@@ -77,20 +191,84 @@
     </div>
     <div class="admin-modal-body">
       <div class="admin-form-grid">
-        <div class="form-group col-span-2"><label class="form-label">Route (e.g. Cebu - Manila)</label><input type="text" id="sRoute" class="form-control" placeholder="Origin - Destination"></div>
-        <div class="form-group"><label class="form-label">Bus</label>
+        <div class="form-group col-span-2">
+          <label class="form-label">Route (e.g. Cebu - Manila)</label>
+          <input type="text" id="sRoute" class="form-control" placeholder="Origin - Destination">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bus</label>
           <select id="sBusId" class="form-control">
             <option value="">— Select a bus —</option>
           </select>
         </div>
-        <div class="form-group"><label class="form-label">Fare (₱)</label><input type="number" id="sFare" class="form-control" placeholder="0.00" step="0.01"></div>
-        <div class="form-group"><label class="form-label">Departure Time</label><input type="datetime-local" id="sDeparture" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Arrival Time</label><input type="datetime-local" id="sArrival" class="form-control"></div>
+        <div class="form-group">
+          <label class="form-label">Fare (₱)</label>
+          <input type="number" id="sFare" class="form-control" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Departure Date &amp; Time</label>
+          <input type="datetime-local" id="sDeparture" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Arrival Date &amp; Time</label>
+          <input type="datetime-local" id="sArrival" class="form-control">
+        </div>
       </div>
     </div>
     <div class="admin-modal-footer">
       <button class="btn btn-outline" onclick="closeModal('schedModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAddSchedule()"><i class="fa-solid fa-plus"></i> Add Schedule</button>
+      <button class="btn btn-primary" onclick="submitAddSchedule()">
+        <i class="fa-solid fa-plus"></i> Add Schedule
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESCHEDULE MODAL (for expired schedules) ───────────────── -->
+<div class="admin-modal" id="reschedModal">
+  <div class="admin-modal-box">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title">
+        <i class="fa-solid fa-calendar-plus" style="color:var(--brand);"></i> Reschedule
+      </div>
+      <button class="modal-close-btn" onclick="closeModal('reschedModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="admin-modal-body">
+      <div style="background:rgba(244,162,97,0.08);border:1.5px solid rgba(244,162,97,0.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text-2);">
+        <i class="fa-solid fa-circle-info" style="color:var(--brand);"></i>
+        Set a new future departure (and optional arrival) date and time. Saving will make this schedule visible again on the Book page.
+      </div>
+      <input type="hidden" id="rSchedId">
+      <div class="admin-form-grid">
+        <div class="form-group col-span-2">
+          <label class="form-label">Route</label>
+          <input type="text" id="rRoute" class="form-control" placeholder="Origin - Destination">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bus</label>
+          <select id="rBusId" class="form-control">
+            <option value="">— Select a bus —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fare (₱)</label>
+          <input type="number" id="rFare" class="form-control" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Departure Date &amp; Time <span style="color:#dc2626;">*</span></label>
+          <input type="datetime-local" id="rDeparture" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Arrival Date &amp; Time</label>
+          <input type="datetime-local" id="rArrival" class="form-control">
+        </div>
+      </div>
+    </div>
+    <div class="admin-modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('reschedModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitReschedule()">
+        <i class="fa-solid fa-calendar-check"></i> Save &amp; Republish
+      </button>
     </div>
   </div>
 </div>
@@ -101,63 +279,291 @@
 <script>
 document.getElementById('navSchedule').classList.add('active');
 
-async function loadScheduleList() {
-  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+const TOKEN = () =>
+  localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
+
+/* ── Tab switching ───────────────────────────────────── */
+function switchTab(tab) {
+  document.getElementById('tabActive').classList.toggle('active',  tab === 'active');
+  document.getElementById('tabExpired').classList.toggle('active', tab === 'expired');
+  document.getElementById('panelActive').style.display  = tab === 'active'  ? '' : 'none';
+  document.getElementById('panelExpired').style.display = tab === 'expired' ? '' : 'none';
+}
+
+/* ── Format datetime-local string for display ────────── */
+function fmtDT(raw) {
+  if (!raw) return '—';
+  if (raw.includes('T')) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'}) +
+             ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+  }
+  return raw;
+}
+
+/* ── Load active schedules ───────────────────────────── */
+async function loadActiveSchedules() {
   try {
-    const res = await fetch('/api/schedules/', {headers:{'Authorization':'Bearer '+token}});
-    let data = await res.json();
-    const schedules = Array.isArray(data) ? data : (data.schedules||[]);
-    document.getElementById('schedCount').textContent = schedules.length + ' schedules';
-    const tbody = document.getElementById('schedTableBody');
-    if (!schedules.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">No schedules. Add one above.</td></tr>'; return; }
+    const res  = await fetch('/api/schedules/', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN() }
+    });
+    const data = await res.json();
+    const schedules = Array.isArray(data) ? data : (data.schedules || []);
+
+    document.getElementById('activeCount').textContent = schedules.length;
+
+    const tbody = document.getElementById('activeTableBody');
+    if (!schedules.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">No active schedules. Add one above.</td></tr>';
+      return;
+    }
     tbody.innerHTML = schedules.map(s => `
       <tr>
-        <td class="fw-600">${s.route||'—'}</td>
-        <td>${s.bus_name||'—'}</td>
-        <td>${s.departure_time||'—'}</td>
-        <td>${s.arrival_time||'—'}</td>
-        <td style="font-weight:700;color:var(--brand-darker);">₱${parseFloat(s.fare||s.price||0).toFixed(2)}</td>
-        <td><span class="badge badge-${(s.seats_available||s.available_seats||0)>0?'green':'red'}">${s.seats_available??s.available_seats??0} left</span></td>
-        <td><button class="btn btn-danger btn-sm" onclick="delSchedule(${s.id})"><i class="fa-solid fa-trash"></i></button></td>
+        <td class="fw-600">${s.route || '—'}</td>
+        <td>${s.bus_name || '—'}</td>
+        <td>${fmtDT(s.departure_time)}</td>
+        <td>${fmtDT(s.arrival_time)}</td>
+        <td style="font-weight:700;color:var(--brand-darker);">
+          ₱${parseFloat(s.fare || s.price || 0).toFixed(2)}
+        </td>
+        <td>
+          <span class="badge badge-${(s.seats_available || 0) > 0 ? 'green' : 'red'}">
+            ${s.seats_available ?? 0} left
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="delSchedule(${s.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
       </tr>`).join('');
-  } catch { Toast.error('Failed to load schedules.'); }
+  } catch(e) {
+    Toast.error('Failed to load active schedules.');
+  }
 }
 
-async function submitAddSchedule() {
-  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
-  const busVal = document.getElementById('sBusId').value;
-  const body = { route:document.getElementById('sRoute').value, bus_id: busVal ? parseInt(busVal) : null, fare:parseFloat(document.getElementById('sFare').value), departure_time:document.getElementById('sDeparture').value, arrival_time:document.getElementById('sArrival').value };
-  if (!body.route) { Toast.warning('Route is required.'); return; }
-  const res = await fetch('/api/schedules/', {method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
-  const data = await res.json();
-  if (res.ok) { Toast.success('Schedule added!'); closeModal('schedModal'); loadScheduleList(); }
-  else Toast.error(data.error||'Failed to add schedule.');
-}
-
-async function delSchedule(id) {
-  if (!confirm('Delete this schedule?')) return;
-  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
-  const res = await fetch(`/api/schedules/${id}`, {method:'DELETE',headers:{'Authorization':'Bearer '+token}});
-  if (res.ok) { Toast.success('Schedule deleted.'); loadScheduleList(); }
-  else Toast.error('Could not delete schedule.');
-}
-
-async function loadBusOptions() {
-  const token = localStorage.getItem('access_token')||localStorage.getItem('authToken');
+/* ── Load expired schedules ──────────────────────────── */
+async function loadExpiredSchedules() {
   try {
-    const res  = await fetch('/api/admin/buses', { headers: { 'Authorization':'Bearer '+token } });
+    const res  = await fetch('/api/schedules/expired', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN() }
+    });
+    if (!res.ok) {
+      Toast.error('Failed to load expired schedules.');
+      return;
+    }
+    const data = await res.json();
+    const schedules = Array.isArray(data) ? data : (data.schedules || []);
+
+    document.getElementById('expiredCount').textContent = schedules.length;
+
+    const tbody = document.getElementById('expiredTableBody');
+    if (!schedules.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;" class="text-muted">No expired schedules.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = schedules.map(s => `
+      <tr class="expired-row">
+        <td class="fw-600">${s.route || '—'}</td>
+        <td>${s.bus_name || '—'}</td>
+        <td style="color:#dc2626;">${fmtDT(s.departure_time)}</td>
+        <td style="font-weight:700;color:var(--brand-darker);">
+          ₱${parseFloat(s.fare || s.price || 0).toFixed(2)}
+        </td>
+        <td>${s.seats_available ?? 0} left</td>
+        <td><span class="badge-expired"><i class="fa-solid fa-clock-rotate-left"></i> Expired</span></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="openReschedModal(${s.id})">
+            <i class="fa-solid fa-calendar-plus"></i> Reschedule
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="delSchedule(${s.id})">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+  } catch(e) {
+    Toast.error('Failed to load expired schedules.');
+  }
+}
+
+/* ── Load bus dropdown options ───────────────────────── */
+async function loadBusOptions(selectId) {
+  try {
+    const res  = await fetch('/api/admin/buses', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN() }
+    });
     const data = await res.json();
     const buses = data.buses || data || [];
-    const sel = document.getElementById('sBusId');
+    const sel = document.getElementById(selectId);
+    const current = sel.value;
     sel.innerHTML = '<option value="">— Select a bus —</option>' +
-      buses.map(b => `<option value="${b.id}">${b.bus_name||b.name} (${b.plate_number}) — ${b.total_seats} seats</option>`).join('');
-  } catch {}
+      buses.map(b =>
+        `<option value="${b.id}">${b.bus_name || b.name} (${b.plate_number}) — ${b.total_seats} seats</option>`
+      ).join('');
+    if (current) sel.value = current;
+  } catch(e) {}
 }
 
+/* ── Open Add modal ──────────────────────────────────── */
+function openAddModal() {
+  document.getElementById('sRoute').value    = '';
+  document.getElementById('sFare').value     = '';
+  document.getElementById('sDeparture').value = '';
+  document.getElementById('sArrival').value  = '';
+  document.getElementById('sBusId').value    = '';
+  loadBusOptions('sBusId');
+  openModal('schedModal');
+}
+
+/* ── Open Reschedule modal ───────────────────────────── */
+async function openReschedModal(schedId) {
+  try {
+    const res  = await fetch(`/api/schedules/${schedId}`, {
+      headers: { 'Authorization': 'Bearer ' + TOKEN() }
+    });
+    if (!res.ok) { Toast.error('Could not load schedule data.'); return; }
+    const data = await res.json();
+    const s = data.schedule || data;
+
+    document.getElementById('rSchedId').value   = s.id;
+    document.getElementById('rRoute').value     = s.route || '';
+    document.getElementById('rFare').value      = s.fare  || s.price || '';
+    // Pre-fill departure/arrival but let admin change them
+    document.getElementById('rDeparture').value = (s.departure_time || '').substring(0, 16);
+    document.getElementById('rArrival').value   = (s.arrival_time   || '').substring(0, 16);
+
+    await loadBusOptions('rBusId');
+    if (s.bus_id) document.getElementById('rBusId').value = String(s.bus_id);
+
+    openModal('reschedModal');
+  } catch(e) {
+    Toast.error('Failed to open reschedule form.');
+  }
+}
+
+/* ── Submit Add Schedule ─────────────────────────────── */
+async function submitAddSchedule() {
+  const route     = document.getElementById('sRoute').value.trim();
+  const busVal    = document.getElementById('sBusId').value;
+  const fare      = document.getElementById('sFare').value;
+  const departure = document.getElementById('sDeparture').value;
+  const arrival   = document.getElementById('sArrival').value;
+
+  if (!route)     { Toast.warning('Route is required.');           return; }
+  if (!fare)      { Toast.warning('Fare is required.');            return; }
+  if (!departure) { Toast.warning('Departure time is required.');  return; }
+
+  // Prevent adding a schedule with a past departure time
+  if (new Date(departure) < new Date()) {
+    Toast.error('Departure time must be in the future.');
+    return;
+  }
+
+  const body = {
+    route,
+    bus_id:         busVal ? parseInt(busVal) : null,
+    fare:           parseFloat(fare),
+    departure_time: departure,
+    arrival_time:   arrival,
+  };
+
+  try {
+    const res  = await fetch('/api/schedules/', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN() },
+      body:    JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success('Schedule added!');
+      closeModal('schedModal');
+      loadActiveSchedules();
+      loadExpiredSchedules();
+    } else {
+      Toast.error(data.error || 'Failed to add schedule.');
+    }
+  } catch(e) {
+    Toast.error('Server error. Please try again.');
+  }
+}
+
+/* ── Submit Reschedule ───────────────────────────────── */
+async function submitReschedule() {
+  const id        = parseInt(document.getElementById('rSchedId').value);
+  const route     = document.getElementById('rRoute').value.trim();
+  const busVal    = document.getElementById('rBusId').value;
+  const fare      = document.getElementById('rFare').value;
+  const departure = document.getElementById('rDeparture').value;
+  const arrival   = document.getElementById('rArrival').value;
+
+  if (!route)     { Toast.warning('Route is required.');          return; }
+  if (!fare)      { Toast.warning('Fare is required.');           return; }
+  if (!departure) { Toast.warning('New departure time is required.'); return; }
+
+  // New departure must be in the future
+  if (new Date(departure) < new Date()) {
+    Toast.error('New departure time must be in the future for the schedule to appear on the Book page.');
+    return;
+  }
+
+  const body = {
+    route,
+    bus_id:         busVal ? parseInt(busVal) : null,
+    fare:           parseFloat(fare),
+    departure_time: departure,
+    arrival_time:   arrival,
+  };
+
+  try {
+    const res  = await fetch(`/api/schedules/${id}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN() },
+      body:    JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success('Schedule rescheduled! It is now visible on the Book page.');
+      closeModal('reschedModal');
+      loadActiveSchedules();
+      loadExpiredSchedules();
+    } else {
+      Toast.error(data.error || 'Failed to reschedule.');
+    }
+  } catch(e) {
+    Toast.error('Server error. Please try again.');
+  }
+}
+
+/* ── Delete schedule ─────────────────────────────────── */
+async function delSchedule(id) {
+  if (!confirm('Delete this schedule? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`/api/schedules/${id}`, {
+      method:  'DELETE',
+      headers: { 'Authorization': 'Bearer ' + TOKEN() }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      Toast.success('Schedule deleted.');
+      loadActiveSchedules();
+      loadExpiredSchedules();
+    } else {
+      Toast.error(data.error || 'Could not delete schedule.');
+    }
+  } catch(e) {
+    Toast.error('Server error. Please try again.');
+  }
+}
+
+/* ── Init ────────────────────────────────────────────── */
 window.onload = function() {
-  const user = JSON.parse(localStorage.getItem('currentUser'));
-  if (!user||user.role!=='admin') { window.location.href='/login'; return; }
-  renderAdminUser(); loadScheduleList(); loadBusOptions();
+  const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+  if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
+  if (typeof Auth !== 'undefined') Auth.renderSidebarUser();
+  loadActiveSchedules();
+  loadExpiredSchedules();
 };
 </script>
 </body>

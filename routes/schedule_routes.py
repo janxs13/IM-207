@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from utils.decorators import admin_required
@@ -10,10 +11,36 @@ from extensions import db
 schedule_bp = Blueprint("schedule", __name__)
 
 
-# ── GET /api/schedules/ — public ─────────────────────────────────
+def _is_expired(s):
+    """Return True when departure_time is a full datetime that has already passed."""
+    raw = s.departure_time or ""
+    if "T" not in raw:
+        return False
+    try:
+        return datetime.strptime(raw[:16], "%Y-%m-%dT%H:%M") < datetime.now()
+    except ValueError:
+        return False
+
+
+# ── GET /api/schedules/ — public (active + NOT expired) ──────────
 @schedule_bp.route("/", methods=["GET"])
 def list_schedules():
     return jsonify({"schedules": get_schedules()})
+
+
+# ── GET /api/schedules/expired — admin only ───────────────────────
+@schedule_bp.route("/expired", methods=["GET"])
+@jwt_required()
+@admin_required
+def list_expired():
+    """Return every active schedule whose departure_time is in the past."""
+    all_active = Schedule.query.filter_by(is_active=True).all()
+    expired = [s for s in all_active if _is_expired(s)]
+    result = []
+    for s in expired:
+        bus = Bus.query.get(s.bus_id) if s.bus_id else None
+        result.append(_serialize_schedule(s, bus))
+    return jsonify({"schedules": result}), 200
 
 
 # ── GET /api/schedules/search ─────────────────────────────────────
@@ -28,6 +55,8 @@ def search_schedules():
     all_schedules = Schedule.query.filter_by(is_active=True).all()
     results = []
     for s in all_schedules:
+        if _is_expired(s):
+            continue
         route_lower = (s.route or "").lower()
         if origin in route_lower and destination in route_lower:
             bus = Bus.query.get(s.bus_id) if s.bus_id else None
@@ -140,18 +169,19 @@ def delete(schedule_id):
 # ── Helper ────────────────────────────────────────────────────────
 def _serialize_schedule(s, bus):
     return {
-        "id":              s.id,
-        "route":           s.route,
-        "departure_time":  (s.departure_time or "").split("T")[-1] if s.departure_time else "",
-        "arrival_time":    s.arrival_time or "",
-        "fare":            s.fare,
-        "price":           s.fare,
-        "seats_available": s.seats_available,
-        "available_seats": s.seats_available,
-        "is_active":       s.is_active,
-        "bus_id":          s.bus_id,
-        "bus_name":        bus.name         if bus else None,
-        "bus_plate":       bus.plate_number if bus else None,
-        "seat_layout":     bus.seat_layout  if bus else "4-column",
-        "total_seats":     bus.total_seats  if bus else 40,
+        "id":               s.id,
+        "route":            s.route,
+        # Full datetime string kept so frontend can parse date+time
+        "departure_time":   s.departure_time or "",
+        "arrival_time":     s.arrival_time or "",
+        "fare":             s.fare,
+        "price":            s.fare,
+        "seats_available":  s.seats_available,
+        "available_seats":  s.seats_available,
+        "is_active":        s.is_active,
+        "bus_id":           s.bus_id,
+        "bus_name":         bus.name         if bus else None,
+        "bus_plate":        bus.plate_number if bus else None,
+        "seat_layout":      bus.seat_layout  if bus else "4-column",
+        "total_seats":      bus.total_seats  if bus else 40,
     }

@@ -47,14 +47,27 @@ def create_schedule(data):
 
 
 def get_schedules():
+    from datetime import datetime
+
+    def _is_expired(s):
+        raw = s.departure_time or ""
+        if "T" not in raw:
+            return False
+        try:
+            return datetime.strptime(raw[:16], "%Y-%m-%dT%H:%M") < datetime.now()
+        except ValueError:
+            return False
+
     schedules = Schedule.query.filter_by(is_active=True).all()
     result = []
     for s in schedules:
+        if _is_expired(s):
+            continue   # expired — hidden from book page
         bus = Bus.query.get(s.bus_id) if s.bus_id else None
         result.append({
             "id":              s.id,
             "route":           s.route,
-            "departure_time":  (s.departure_time or "").split("T")[-1] if s.departure_time else "",
+            "departure_time":  s.departure_time or "",
             "arrival_time":    s.arrival_time or "",
             "fare":            s.fare,
             "price":           s.fare,
@@ -65,7 +78,7 @@ def get_schedules():
             "bus_name":        bus.name         if bus else None,
             "bus_plate":       bus.plate_number if bus else None,
             "seat_layout":     bus.seat_layout  if bus else "4-column",
-            "total_seats":     bus.total_seats  if bus else 40
+            "total_seats":     bus.total_seats  if bus else 40,
         })
     return result
 
