@@ -32,6 +32,67 @@
   margin-left: auto;
 }
 
+/* Bus preview card — shown below fare summary when schedule is selected */
+.bus-preview {
+  display: none;
+  gap: 14px;
+  align-items: center;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-top: 10px;
+}
+.bus-preview.show { display: flex; }
+.bus-preview-img {
+  width: 110px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface2);
+}
+.bus-preview-placeholder {
+  width: 110px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--border-dark);
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.bus-preview-info { flex: 1; min-width: 0; }
+.bus-preview-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-1);
+  margin-bottom: 3px;
+}
+.bus-preview-plate {
+  font-size: 12px;
+  color: var(--text-3);
+  font-family: monospace;
+  margin-bottom: 4px;
+}
+.bus-preview-meta {
+  font-size: 12px;
+  color: var(--text-2);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bus-preview-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Schedule row */
 .sched-row {
   display: flex; align-items: center; gap: 16px;
@@ -167,7 +228,7 @@
           </button>
         </div>
 
-        <!-- FARE SUMMARY — shown when a schedule is highlighted -->
+        <!-- FARE SUMMARY -->
         <div class="fare-summary" id="fareSummary">
           <i class="fa-solid fa-calculator" style="color:var(--brand);font-size:15px;"></i>
           <span class="eq-part">
@@ -175,15 +236,29 @@
           </span>
           <span style="color:var(--text-3);">=</span>
           <span class="eq-result">&#8369;<span id="sumTotal">0.00</span></span>
-          <span style="margin-left:6px;" class="badge badge-brand" id="sumBus"></span>
         </div>
+
+        <!-- BUS PREVIEW CARD -->
+        <div class="bus-preview" id="busPreview">
+          <!-- image or placeholder injected by JS -->
+          <div id="busPreviewMedia"></div>
+          <div class="bus-preview-info">
+            <div class="bus-preview-name" id="busPreviewName">—</div>
+            <div class="bus-preview-plate" id="busPreviewPlate"></div>
+            <div class="bus-preview-meta">
+              <span><i class="fa-solid fa-couch" style="color:var(--brand);"></i> <span id="busPreviewSeats">—</span> seats</span>
+              <span><i class="fa-solid fa-table-columns" style="color:var(--brand);"></i> <span id="busPreviewLayout">—</span></span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
     <!-- SEARCH RESULTS -->
     <div id="searchResults" style="display:none;"></div>
 
-    <!-- ALL SCHEDULES (default view) -->
+    <!-- ALL SCHEDULES -->
     <div id="allSchedules">
       <div class="card">
         <div class="card-header">
@@ -219,32 +294,28 @@ function authFetch(url, opts={}) {
 
 function logout() { Auth.logout(); }
 
-/* ── Format departure_time for display ───────────────── */
+/* ── Format helpers ──────────────────────────────────── */
 function fmtTime(raw) {
   if (!raw) return '—';
   if (raw.includes('T')) {
     const d = new Date(raw);
-    if (!isNaN(d.getTime())) {
+    if (!isNaN(d.getTime()))
       return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    }
   }
   return raw;
 }
-
 function fmtDate(raw) {
   if (!raw || !raw.includes('T')) return '';
   const d = new Date(raw);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
 }
-
 function fmtArrival(raw) {
   if (!raw) return '—';
   if (raw.includes('T')) {
     const d = new Date(raw);
-    if (!isNaN(d.getTime())) {
+    if (!isNaN(d.getTime()))
       return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    }
   }
   return raw;
 }
@@ -255,25 +326,46 @@ function updateFareSummary() {
   const pax   = parseInt(document.getElementById('passengerCount').value) || 1;
   const fare  = parseFloat(selectedSched.fare || selectedSched.price || 0);
   const total = fare * pax;
-
   document.getElementById('sumFare').textContent  = fare.toFixed(2);
   document.getElementById('sumPax').textContent   = pax;
   document.getElementById('sumTotal').textContent = total.toFixed(2);
-  document.getElementById('sumBus').textContent   = selectedSched.bus_name || '';
-  document.getElementById('sumBus').style.cssText = '';
   document.getElementById('fareSummary').classList.add('show');
+}
+
+/* ── Bus preview card ────────────────────────────────── */
+function updateBusPreview() {
+  const s = selectedSched;
+  if (!s || !s.bus_name) {
+    document.getElementById('busPreview').classList.remove('show');
+    return;
+  }
+
+  // Image or placeholder
+  const mediaEl = document.getElementById('busPreviewMedia');
+  if (s.bus_image_url) {
+    mediaEl.innerHTML = `<img class="bus-preview-img" src="${s.bus_image_url}" alt="${s.bus_name}" loading="lazy">`;
+  } else {
+    mediaEl.innerHTML = `<div class="bus-preview-placeholder" title="No photo uploaded for this bus"><i class="fa-solid fa-bus"></i></div>`;
+  }
+
+  document.getElementById('busPreviewName').textContent   = s.bus_name || '—';
+  document.getElementById('busPreviewPlate').textContent  = s.bus_plate || '';
+  document.getElementById('busPreviewSeats').textContent  = s.total_seats || '—';
+  document.getElementById('busPreviewLayout').textContent = s.seat_layout || '—';
+
+  document.getElementById('busPreview').classList.add('show');
 }
 
 /* ── Render a single schedule row ────────────────────── */
 function makeSchedRow(s, idx) {
-  const parts  = s.route.split(' - ');
-  const seats  = s.seats_available ?? s.available_seats ?? 0;
-  const fare   = parseFloat(s.fare || s.price || 0);
-  const pax    = parseInt(document.getElementById('passengerCount').value) || 1;
-  const total  = fare * pax;
-  const isFull = seats === 0;
-  const badgeCls = seats > 10 ? 'badge-green' : seats > 3 ? 'badge-yellow' : 'badge-red';
-  const depDate  = fmtDate(s.departure_time);
+  const parts   = s.route.split(' - ');
+  const seats   = s.seats_available ?? s.available_seats ?? 0;
+  const fare    = parseFloat(s.fare || s.price || 0);
+  const pax     = parseInt(document.getElementById('passengerCount').value) || 1;
+  const total   = fare * pax;
+  const isFull  = seats === 0;
+  const badge   = seats > 10 ? 'badge-green' : seats > 3 ? 'badge-yellow' : 'badge-red';
+  const depDate = fmtDate(s.departure_time);
 
   return `
   <div class="sched-row" id="srow-${idx}" onclick="highlightRow(${idx})">
@@ -292,7 +384,7 @@ function makeSchedRow(s, idx) {
       </div>
     </div>
 
-    <span class="badge ${badgeCls}" style="flex-shrink:0;">
+    <span class="badge ${badge}" style="flex-shrink:0;">
       ${isFull ? 'Full' : seats + ' seats'}
     </span>
 
@@ -319,10 +411,11 @@ function highlightRow(idx) {
   if (rowEl) rowEl.classList.add('selected-row');
   selectedSched = allSchedules[idx];
   updateFareSummary();
+  updateBusPreview();
   refreshTotals();
 }
 
-/* ── Refresh totals column ───────────────────────────── */
+/* ── Refresh totals ──────────────────────────────────── */
 function refreshTotals() {
   const pax = parseInt(document.getElementById('passengerCount').value) || 1;
   allSchedules.forEach((s, idx) => {
@@ -366,9 +459,9 @@ function searchSchedules() {
     (!destination || s.route.toLowerCase().includes(destination))
   );
 
-  // Reset selection — indices change after filtering
   selectedSched = null;
   document.getElementById('fareSummary').classList.remove('show');
+  document.getElementById('busPreview').classList.remove('show');
 
   const resultsEl = document.getElementById('searchResults');
   const allEl     = document.getElementById('allSchedules');
@@ -408,6 +501,7 @@ function resetSearch() {
   document.getElementById('destination').value = '';
   selectedSched = null;
   document.getElementById('fareSummary').classList.remove('show');
+  document.getElementById('busPreview').classList.remove('show');
 }
 
 /* ── Book Now ────────────────────────────────────────── */
@@ -429,7 +523,6 @@ function bookNow(idx) {
     return;
   }
 
-  // Validate travel date is not in the past
   const date  = document.getElementById('travelDate').value || new Date().toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
   if (date < today) {
@@ -452,7 +545,7 @@ async function createBookingAndGo(schedule, pax, total) {
   const date = document.getElementById('travelDate').value ||
                new Date().toISOString().split('T')[0];
 
-  // DEMO MODE: admin preview — skip API
+  // DEMO MODE
   if (user && user.role === 'admin') {
     const demoCode = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
     const booking = {

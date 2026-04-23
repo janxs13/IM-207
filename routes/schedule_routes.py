@@ -184,4 +184,6 @@ def _serialize_schedule(s, bus):
         "bus_plate":        bus.plate_number if bus else None,
         "seat_layout":      bus.seat_layout  if bus else "4-column",
         "total_seats":      bus.total_seats  if bus else 40,
+        "bus_image_url":    (f"/static/bus_images/{bus.image_filename}"
+                             if bus and bus.image_filename else None),
     }

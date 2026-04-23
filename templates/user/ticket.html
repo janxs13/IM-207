@@ -100,6 +100,7 @@
     </a>
     <a href="/profile"><i class="fa-solid fa-clock-rotate-left"></i> My Bookings</a>
     <a href="/book"><i class="fa-solid fa-plus"></i> New Booking</a>
+    <a href="/login" onclick="Auth.logout(); return false;" class="nav-logout no-print"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </nav>
 
   <div class="page-content" style="padding-bottom:40px;">
@@ -161,7 +162,6 @@
         <div class="amount-bar">
           <div>
             <div class="label"><i class="fa-solid fa-peso-sign"></i> Amount Paid</div>
-            <div class="breakdown" id="fareBreakdown"></div>
           </div>
           <div class="amount">₱<span id="amountPaid">0.00</span></div>
         </div>
@@ -237,10 +237,6 @@ function populateTicket(booking, user) {
   document.getElementById('paymentMethod').textContent  = localStorage.getItem('receiptPayment') || booking.payment_method || '—';
   document.getElementById('amountPaid').textContent     = amount.toFixed(2);
   document.getElementById('refCode').textContent        = code;
-
-  if (farePS > 0 && pax > 1) {
-    document.getElementById('fareBreakdown').textContent = '₱' + farePS.toFixed(2) + ' × ' + pax + ' pax';
-  }
 
   // Bus info
   if (busName) {

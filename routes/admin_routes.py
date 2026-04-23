@@ -11,6 +11,7 @@ from models.user import User
 from models.bus import Bus
 from extensions import db
 from datetime import datetime, timedelta
+import os
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -103,6 +104,104 @@ def edit_bus(bus_id):
 def remove_bus(bus_id):
     result, status = delete_bus(bus_id)
     return jsonify(result), status
+
+
+# ── Bus image upload ──────────────────────────────────────────────
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024   # 5 MB
+
+
+def _allowed_image(filename):
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
+
+
+def _bus_images_dir():
+    from flask import current_app
+    path = os.path.join(current_app.static_folder, "bus_images")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+@admin_bp.route("/buses/<int:bus_id>/image", methods=["POST"])
+@jwt_required()
+@admin_required
+def upload_bus_image(bus_id):
+    bus = Bus.query.get(bus_id)
+    if not bus:
+        return jsonify({"error": "Bus not found"}), 404
+
+    if "image" not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
+
+    file = request.files["image"]
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+    if not _allowed_image(file.filename):
+        return jsonify({"error": "Only JPG, PNG, and WEBP images are allowed"}), 400
+
+    # Check file size
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_IMAGE_BYTES:
+        return jsonify({"error": "Image must be under 5 MB"}), 400
+
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    filename = f"bus_{bus_id}.{ext}"
+    save_dir = _bus_images_dir()
+
+    # Delete any old image for this bus (different extension)
+    for old_ext in ALLOWED_IMAGE_EXTENSIONS:
+        old_path = os.path.join(save_dir, f"bus_{bus_id}.{old_ext}")
+        if os.path.exists(old_path) and old_ext != ext:
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+
+    save_path = os.path.join(save_dir, filename)
+    try:
+        file.save(save_path)
+    except Exception:
+        return jsonify({"error": "Failed to save image. Please try again."}), 500
+
+    bus.image_filename = filename
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update bus record"}), 500
+
+    image_url = f"/static/bus_images/{filename}"
+    return jsonify({"message": "Image uploaded", "image_url": image_url}), 200
+
+
+@admin_bp.route("/buses/<int:bus_id>/image", methods=["DELETE"])
+@jwt_required()
+@admin_required
+def delete_bus_image(bus_id):
+    bus = Bus.query.get(bus_id)
+    if not bus:
+        return jsonify({"error": "Bus not found"}), 404
+
+    if bus.image_filename:
+        try:
+            path = os.path.join(_bus_images_dir(), bus.image_filename)
+            if os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+        bus.image_filename = None
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return jsonify({"error": "Failed to remove image reference"}), 500
+
+    return jsonify({"message": "Image removed"}), 200
 
 
 # ── Bookings (paginated) ──────────────────────────────────────────

@@ -81,7 +81,8 @@ def get_all_buses():
         "plate_number": b.plate_number,
         "total_seats":  b.total_seats,
         "seat_layout":  b.seat_layout,
-        "is_active":    b.is_active
+        "is_active":    b.is_active,
+        "image_url":    f"/static/bus_images/{b.image_filename}" if b.image_filename else None,
     } for b in buses]
 
 

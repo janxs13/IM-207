@@ -38,6 +38,7 @@ def _safe_migrate(app):
         ("schedule", "bus_id",                 "ALTER TABLE schedule ADD COLUMN bus_id                INTEGER"),
         ("schedule", "is_active",              "ALTER TABLE schedule ADD COLUMN is_active             BOOLEAN DEFAULT 1"),
         ("bus",      "is_active",              "ALTER TABLE bus     ADD COLUMN is_active              BOOLEAN DEFAULT 1"),
+        ("bus",      "image_filename",         "ALTER TABLE bus     ADD COLUMN image_filename         VARCHAR(200)"),
         ("contact_message", "replied_at",      "ALTER TABLE contact_message ADD COLUMN replied_at     DATETIME"),
     ]
 
