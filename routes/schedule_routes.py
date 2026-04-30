@@ -48,9 +48,7 @@ def list_expired():
 def search_schedules():
     origin      = (request.args.get("origin")      or "").strip().lower()
     destination = (request.args.get("destination") or "").strip().lower()
-
-    if not origin or not destination:
-        return jsonify({"error": "origin and destination are required"}), 400
+    travel_date = (request.args.get("date")        or "").strip()  # YYYY-MM-DD
 
     all_schedules = Schedule.query.filter_by(is_active=True).all()
     results = []
@@ -58,10 +56,59 @@ def search_schedules():
         if _is_expired(s):
             continue
         route_lower = (s.route or "").lower()
-        if origin in route_lower and destination in route_lower:
-            bus = Bus.query.get(s.bus_id) if s.bus_id else None
-            results.append(_serialize_schedule(s, bus))
+        # Route filter
+        if origin and origin not in route_lower:
+            continue
+        if destination and destination not in route_lower:
+            continue
+        # Date filter — match departure_time prefix
+        if travel_date and s.departure_time:
+            if not s.departure_time.startswith(travel_date):
+                continue
+        bus = Bus.query.get(s.bus_id) if s.bus_id else None
+        results.append(_serialize_schedule(s, bus))
     return jsonify({"schedules": results})
+
+
+# ── PUT /api/schedules/<id>/status — admin trip status update ─────
+@schedule_bp.route("/<int:schedule_id>/status", methods=["PUT"])
+@jwt_required()
+@admin_required
+def update_trip_status(schedule_id):
+    """Update live trip status — broadcast to passengers via SocketIO."""
+    schedule = Schedule.query.get(schedule_id)
+    if not schedule:
+        return jsonify({"error": "Schedule not found"}), 404
+
+    data = request.get_json() or {}
+    valid_statuses = {"scheduled", "boarding", "departed", "arrived", "cancelled", "delayed"}
+    new_status = (data.get("trip_status") or "").strip().lower()
+    if new_status not in valid_statuses:
+        return jsonify({"error": f"Invalid status. Must be one of: {', '.join(sorted(valid_statuses))}"}), 400
+
+    schedule.trip_status   = new_status
+    schedule.delay_minutes = int(data.get("delay_minutes", 0))
+    schedule.delay_reason  = (data.get("delay_reason") or "").strip()[:200] or None
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update trip status"}), 500
+
+    # Broadcast status update to all connected passengers
+    try:
+        from extensions import socketio
+        socketio.emit("trip_status_update", {
+            "schedule_id":   schedule_id,
+            "trip_status":   new_status,
+            "delay_minutes": schedule.delay_minutes,
+            "delay_reason":  schedule.delay_reason,
+        })
+    except Exception:
+        pass
+
+    return jsonify({"message": "Trip status updated", "trip_status": new_status}), 200
 
 
 # ── GET /api/schedules/<id> — single schedule ─────────────────────

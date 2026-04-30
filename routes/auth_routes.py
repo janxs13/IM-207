@@ -21,9 +21,21 @@ RESET_TOKEN_TTL_MINUTES = 30
 @limiter.limit("10 per hour")
 def register():
     data = request.get_json() or request.form.to_dict()
+    from utils.sanitizer import validate_ph_phone, sanitize_text
     email = (data.get("email") or "").strip()
     if email and not EMAIL_RE.match(email):
         return jsonify({"error": "Invalid email format"}), 400
+    # Sanitize text fields
+    if data.get("username"):
+        data["username"] = sanitize_text(data["username"], 80)
+    if data.get("first_name"):
+        data["first_name"] = sanitize_text(data["first_name"], 80)
+    if data.get("last_name"):
+        data["last_name"] = sanitize_text(data["last_name"], 80)
+    # Validate phone if provided
+    phone = (data.get("phone") or "").strip()
+    if phone and not validate_ph_phone(phone):
+        return jsonify({"error": "Enter a valid PH mobile number (09XXXXXXXXX)"}), 400
     response, status = register_user(data)
     return jsonify(response), status
 

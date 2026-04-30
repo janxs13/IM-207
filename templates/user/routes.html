@@ -7,6 +7,185 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/user.css">
+<style>
+/* ── Route card ────────────────────────────────────────── */
+.route-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  transition: box-shadow .15s, transform .15s;
+}
+.route-card:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+  transform: translateY(-2px);
+}
+
+/* ── Top body: terminal row ────────────────────────────── */
+.rc-body {
+  padding: 22px 24px 16px;
+  display: grid;
+  /* col1=origin | col2=connector | col3=dest | col4=divider | col5=meta */
+  grid-template-columns: minmax(110px,1fr) 90px minmax(110px,1fr) 1px minmax(160px,auto);
+  align-items: center;
+  gap: 0 12px;
+}
+
+/* Origin / Destination boxes */
+.rc-terminal {
+  padding: 0 4px;
+}
+.rc-terminal-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-3);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rc-terminal-city {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1.15;
+  word-break: break-word;
+}
+.rc-terminal-time {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-darker);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rc-terminal-date {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* Connector column — purely decorative, no text bleeding */
+.rc-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  overflow: visible;
+}
+.rc-connector-bus {
+  width: 36px;
+  height: 36px;
+  background: var(--brand);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(244,162,97,0.4);
+}
+.rc-connector-line-top,
+.rc-connector-line-bot {
+  width: 2px;
+  height: 14px;
+  background: linear-gradient(to bottom, var(--brand), var(--brand-darker));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.rc-connector-duration {
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Vertical divider */
+.rc-divider {
+  width: 1px;
+  height: 80px;
+  background: var(--border);
+  align-self: center;
+}
+
+/* Right meta column */
+.rc-meta {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.rc-fare-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+.rc-fare-amount {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brand-darker);
+  line-height: 1;
+}
+.rc-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Footer strip ──────────────────────────────────────── */
+.rc-footer {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  padding: 9px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.rc-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.rc-footer-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rc-footer-item i { color: var(--brand); font-size: 11px; }
+
+/* Responsive — stack on small screens */
+@media (max-width: 680px) {
+  .rc-body {
+    grid-template-columns: 1fr;
+    gap: 14px 0;
+  }
+  .rc-divider { display: none; }
+  .rc-connector { flex-direction: row; }
+  .rc-connector-line-top,
+  .rc-connector-line-bot { width: 24px; height: 2px; }
+  .rc-meta { padding-left: 0; flex-direction: row; flex-wrap: wrap; align-items: center; }
+}
+</style>
 </head>
 <body>
 <div class="passenger-layout">
@@ -20,90 +199,225 @@
     <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
     <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
     <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
-    <a href="/login" onclick="localStorage.removeItem('currentUser')" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    <a href="/login" onclick="Auth.logout(); return false;" class="nav-logout">
+      <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
   </nav>
 
   <div class="page-content">
-    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
       <div>
-        <div class="page-title"><i class="fa-solid fa-map-location-dot" style="color:var(--brand);margin-right:8px;"></i>Available Routes</div>
-        <div class="page-subtitle">Browse all active bus schedules and fares</div>
+        <div class="page-title">
+          <i class="fa-solid fa-map-location-dot" style="color:var(--brand);margin-right:8px;"></i>Available Routes
+        </div>
+        <div class="page-subtitle">Point-to-point bus terminals &mdash; Browse schedules and fares</div>
       </div>
       <div class="search-bar">
         <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-        <input type="text" id="searchInput" placeholder="Search routes…" oninput="filterRoutes()">
+        <input type="text" id="searchInput" placeholder="Search terminal or route…" oninput="filterRoutes()">
       </div>
     </div>
 
+    <!-- Origin terminal filter chips -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;" id="summaryChips"></div>
+
     <div id="routeList">
-      <div class="empty-state"><div class="spinner"></div><p style="margin-top:12px;">Loading routes…</p></div>
+      <div class="empty-state">
+        <div class="spinner"></div>
+        <p style="margin-top:12px;color:var(--text-3);">Loading routes…</p>
+      </div>
     </div>
   </div>
 
   <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
 </div>
+
 <div id="toast-container"></div>
 <script src="/static/js/auth.js"></script>
 <script>
 let allSchedules = [];
 
+function fmtTime(raw) {
+  if (!raw) return '';
+  if (raw.includes('T')) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime()))
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return raw;
+}
+
+function fmtDate(raw) {
+  if (!raw || !raw.includes('T')) return '';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function calcDuration(dep, arr) {
+  if (!dep || !arr || !dep.includes('T') || !arr.includes('T')) return '';
+  try {
+    const diff = new Date(arr) - new Date(dep);
+    if (diff <= 0) return '';
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (h > 0 && m > 0) return `~${h}h ${m}m`;
+    if (h > 0) return `~${h}h`;
+    return `~${m}m`;
+  } catch (e) { return ''; }
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function filterRoutes() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  renderRoutes(allSchedules.filter(s => s.route.toLowerCase().includes(q)));
+  renderRoutes(
+    q ? allSchedules.filter(s => (s.route || '').toLowerCase().includes(q)) : allSchedules
+  );
 }
 
 function renderRoutes(list) {
   const el = document.getElementById('routeList');
+
   if (!list.length) {
-    el.innerHTML = '<div class="empty-state"><span class="empty-icon">🗺️</span><p>No routes found.</p></div>';
+    el.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🗺️</span>
+        <p>No routes match your search.</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;"
+                onclick="document.getElementById('searchInput').value='';filterRoutes();">
+          Clear search
+        </button>
+      </div>`;
     return;
   }
+
   el.innerHTML = list.map(s => {
-    const parts = s.route.split(' - ');
-    const seats = s.seats_available ?? s.available_seats ?? 0;
-    const seatCls = seats > 10 ? 'badge-green' : seats > 3 ? 'badge-yellow' : 'badge-red';
+    const parts    = (s.route || '').split(' - ');
+    const origin   = esc(parts[0] || s.route);
+    const dest     = esc(parts[1] || '—');
+    const seats    = s.seats_available ?? s.available_seats ?? 0;
+    const isFull   = seats === 0;
+    const seatCls  = isFull ? 'badge-red' : seats > 10 ? 'badge-green' : 'badge-yellow';
+    const seatTxt  = isFull ? 'Full' : `${seats} seats left`;
+    const fare     = parseFloat(s.fare || s.price || 0);
+    const depTime  = fmtTime(s.departure_time);
+    const arrTime  = fmtTime(s.arrival_time);
+    const depDate  = fmtDate(s.departure_time);
+    const duration = calcDuration(s.departure_time, s.arrival_time);
+    const busName  = esc(s.bus_name  || '');
+    const busPlate = esc(s.bus_plate || '');
+    const layout   = esc(s.seat_layout || '');
+    const totalSts = s.total_seats || '';
+
     return `
-    <div class="section-card" style="margin-bottom:14px;">
-      <div style="padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
-        <div style="display:flex;align-items:center;gap:24px;flex:1;min-width:0;">
-          <div style="text-align:center;min-width:100px;">
-            <div style="font-family:var(--font-display);font-size:17px;font-weight:800;">${parts[0]||s.route}</div>
-            <div class="text-sm text-muted">${s.departure_time||'—'}</div>
+    <div class="route-card">
+      <div class="rc-body">
+
+        <!-- ORIGIN TERMINAL -->
+        <div class="rc-terminal">
+          <div class="rc-terminal-label">
+            <i class="fa-solid fa-circle-dot" style="color:var(--brand);"></i>
+            Origin Terminal
           </div>
-          <div style="flex:1;display:flex;align-items:center;gap:0;min-width:60px;">
-            <div style="flex:1;height:2px;background:var(--border-dark);position:relative;">
-              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface);padding:0 6px;color:var(--brand);font-size:13px;"><i class="fa-solid fa-bus"></i></div>
-            </div>
-          </div>
-          <div style="text-align:center;min-width:100px;">
-            <div style="font-family:var(--font-display);font-size:17px;font-weight:800;">${parts[1]||'—'}</div>
-            <div class="text-sm text-muted">${s.arrival_time||'—'}</div>
-          </div>
+          <div class="rc-terminal-city">${origin}</div>
+          ${depTime ? `<div class="rc-terminal-time"><i class="fa-regular fa-clock"></i>${depTime}</div>` : ''}
+          ${depDate ? `<div class="rc-terminal-date">${depDate}</div>` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:16px;flex-shrink:0;">
-          <span class="badge ${seatCls}">${seats} seats left</span>
-          <div style="text-align:right;">
-            <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--brand-darker);">₱${parseFloat(s.fare||s.price||0).toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
+
+        <!-- CONNECTOR -->
+        <div class="rc-connector">
+          <div class="rc-connector-line-top"></div>
+          <div class="rc-connector-bus">
+            <i class="fa-solid fa-bus"></i>
           </div>
-          <a href="/book">
-            <button class="btn btn-primary" ${seats===0?'disabled style="opacity:0.5;"':''}>
-              ${seats===0?'Full':'<i class="fa-solid fa-ticket"></i> Book Now'}
+          <div class="rc-connector-line-bot"></div>
+          ${duration ? `<div class="rc-connector-duration">${duration}</div>` : ''}
+        </div>
+
+        <!-- DESTINATION TERMINAL -->
+        <div class="rc-terminal">
+          <div class="rc-terminal-label">
+            <i class="fa-solid fa-location-pin" style="color:var(--brand);"></i>
+            Destination Terminal
+          </div>
+          <div class="rc-terminal-city">${dest}</div>
+          ${arrTime ? `<div class="rc-terminal-time"><i class="fa-regular fa-clock"></i>${arrTime}</div>` : ''}
+        </div>
+
+        <!-- VERTICAL DIVIDER -->
+        <div class="rc-divider"></div>
+
+        <!-- RIGHT META: fare + seats + book button -->
+        <div class="rc-meta">
+          <div>
+            <div class="rc-fare-label">Fare per seat</div>
+            <div class="rc-fare-amount">&#8369;${fare.toLocaleString('en-PH', {minimumFractionDigits:2})}</div>
+          </div>
+          <div class="rc-meta-row">
+            <span class="badge ${seatCls}">${seatTxt}</span>
+          </div>
+          <a href="/book" style="text-decoration:none;">
+            <button class="btn btn-primary btn-sm"
+                    ${isFull ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+              ${isFull
+                ? '<i class="fa-solid fa-ban"></i> Full'
+                : '<i class="fa-solid fa-ticket"></i> Book Now'}
             </button>
           </a>
         </div>
+
+      </div>
+
+      <!-- FOOTER STRIP -->
+      <div class="rc-footer">
+        <div class="rc-footer-left">
+          <span class="rc-footer-item">
+            <i class="fa-solid fa-route"></i>
+            <span>${esc(s.route || '')}</span>
+          </span>
+          ${busName ? `
+          <span class="rc-footer-item">
+            <i class="fa-solid fa-bus"></i>
+            <span>${busName}${busPlate ? ' &middot; ' + busPlate : ''}</span>
+          </span>` : ''}
+          ${layout ? `
+          <span class="rc-footer-item">
+            <i class="fa-solid fa-table-columns"></i>
+            <span>${layout}${totalSts ? ' &middot; ' + totalSts + ' seats' : ''}</span>
+          </span>` : ''}
+        </div>
+        <span class="rc-footer-item" style="color:var(--green,#10b981);font-weight:700;">
+          <i class="fa-solid fa-circle-check" style="color:var(--green,#10b981);"></i> Active
+        </span>
       </div>
     </div>`;
   }).join('');
 }
 
-window.onload = async function() {
+function buildSummary(list) {
+  const origins = [...new Set(list.map(s => (s.route || '').split(' - ')[0]).filter(Boolean))];
+  document.getElementById('summaryChips').innerHTML = origins.slice(0, 8).map(o =>
+    `<span class="badge badge-brand"
+           style="cursor:pointer;font-size:12px;padding:5px 13px;"
+           onclick="document.getElementById('searchInput').value='${o.replace(/'/g,"\\'")}';filterRoutes();">
+       <i class="fa-solid fa-circle-dot" style="margin-right:4px;"></i>${esc(o)}
+     </span>`
+  ).join('');
+}
+
+window.onload = async function () {
   try {
-    const res = await fetch('/api/schedules/');
-    let data = await res.json();
+    const res  = await fetch('/api/schedules/');
+    const data = await res.json();
     allSchedules = Array.isArray(data) ? data : (data.schedules || []);
-    filterRoutes();
-  } catch {
-    document.getElementById('routeList').innerHTML = '<div class="empty-state"><p>Could not load routes.</p></div>';
+    buildSummary(allSchedules);
+    renderRoutes(allSchedules);
+  } catch (e) {
+    document.getElementById('routeList').innerHTML =
+      '<div class="empty-state"><p>Could not load routes. Please try again.</p></div>';
   }
 };
 </script>

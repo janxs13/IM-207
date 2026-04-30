@@ -290,7 +290,9 @@ async function registerUser() {
     const data = await res.json();
     if (res.ok) {
       showSuccess(data.message || 'Account created! Redirecting to login…');
-      setTimeout(() => { window.location.href = '/login'; }, 1600);
+      Auth.saveSession(data.access_token, data.user);
+      sessionStorage.setItem('justLoggedIn', '1');
+      setTimeout(() => { window.location.href = '/'; }, 1200);
     } else {
       showError(data.error || 'Registration failed. Please try again.');
       btn.disabled = false;

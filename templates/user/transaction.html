@@ -42,6 +42,7 @@
     </a>
     <a href="/seat-selection"><i class="fa-solid fa-arrow-left"></i> Back</a>
     <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
+    <a href="/login" onclick="Auth.logout(); return false;" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </nav>
 
   <div class="page-content">
@@ -114,6 +115,15 @@
               <label class="pay-label" for="ppaymaya">
                 <img src="/static/images/paymaya.png" alt="PayMaya">
                 <span>PayMaya</span>
+              </label>
+            </div>
+            <div class="pay-option">
+              <input type="radio" name="payment" id="ppaymongo" value="PayMongo">
+              <label class="pay-label" for="ppaymongo">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#1565D8,#2B7AF0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                  <i class="fa-solid fa-bolt" style="color:#fff;font-size:24px;"></i>
+                </div>
+                <span>PayMongo</span>
               </label>
             </div>
             <div class="pay-option">
@@ -209,7 +219,7 @@ function processPayment() {
   // Save chosen method — the payment page will call the API
   localStorage.setItem('selectedPaymentMethod', method.value);
 
-  const routes = { GCash: '/gcash', PayMaya: '/paymaya', PayPal: '/paypal' };
+  const routes = { GCash: '/gcash', PayMaya: '/paymaya', PayPal: '/paypal', PayMongo: '/paymongo' };
   window.location.href = routes[method.value] || '/ticket';
 }
 </script>

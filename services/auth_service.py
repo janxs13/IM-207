@@ -19,10 +19,10 @@ def register_user(data):
             return {"error": "All fields are required"}, 400
         if not EMAIL_RE.match(email):
             return {"error": "Invalid email format"}, 400
-        if len(password) < 6:
-            return {"error": "Password must be at least 6 characters"}, 400
-        if len(password) > 128:
-            return {"error": "Password too long"}, 400
+        from utils.sanitizer import validate_password_strength
+        pw_ok, pw_msg = validate_password_strength(password)
+        if not pw_ok:
+            return {"error": pw_msg}, 400
         if len(first_name) > 100 or len(last_name) > 100:
             return {"error": "Name too long (max 100 characters each)"}, 400
         if User.query.filter_by(email=email).first():

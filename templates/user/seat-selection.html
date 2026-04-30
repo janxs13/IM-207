@@ -138,6 +138,7 @@ html, body {
     </a>
     <a href="/book"><i class="fa-solid fa-arrow-left"></i> Back to Booking</a>
     <a href="/profile"><i class="fa-solid fa-clock-rotate-left"></i> My Bookings</a>
+    <a href="/login" onclick="Auth.logout(); return false;" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </nav>
 
   <div class="seat-page-wrap">
@@ -202,7 +203,7 @@ html, body {
         <i class="fa-solid fa-hourglass-half" style="color:#EF4444;font-size:17px;"></i>
         <div>
           <div style="font-size:11px;color:rgba(255,255,255,0.5);">Seat reserved for</div>
-          <span id="countdown" style="font-weight:700;color:var(--brand);font-size:15px;">120:00</span>
+          <span id="countdown" style="font-weight:700;color:var(--brand);font-size:15px;">10:00</span>
         </div>
       </div>
 
@@ -244,8 +245,32 @@ const totalSeats     = parseInt(booking.total_seats || schedule.total_seats || 4
 const fare           = parseFloat(schedule.fare || schedule.price || booking.fare_per_seat || 0);
 
 let selectedSeats = [];
-let secondsLeft   = 7200;  // 2 hours, matches server locked_until
+let secondsLeft   = 600;  // 10 minutes, matches server locked_until
 let timerInterval = null;
+let _serverTimeOffset = 0;  // ms offset between server UTC and client Date.now()
+
+// ── Fetch server time once on load to calibrate offset ───────────
+async function calibrateServerTime() {
+  try {
+    const t0  = Date.now();
+    const res = await fetch('/api/time');
+    const t1  = Date.now();
+    if (res.ok) {
+      const data = await res.json();
+      const serverMs  = data.timestamp * 1000;
+      const roundTrip = t1 - t0;
+      // Estimate server time at moment of response arrival
+      _serverTimeOffset = serverMs + (roundTrip / 2) - t1;
+    }
+  } catch(e) {
+    // Non-fatal — fall back to local time
+    _serverTimeOffset = 0;
+  }
+}
+
+function serverNow() {
+  return Date.now() + _serverTimeOffset;
+}
 
 if (!user.id || !booking.id) { window.location.href = '/book'; }
 
@@ -395,11 +420,37 @@ async function loadSeats() {
 
 function startTimer() {
   document.getElementById('timerBox').classList.add('show');
+
+  // Use server-calibrated time to compute seconds remaining
+  // from the booking's locked_until field (set to utcnow + 10 min on server)
+  if (booking && booking.locked_until) {
+    try {
+      const expiresAt  = new Date(booking.locked_until).getTime();
+      const nowServer  = serverNow();
+      const remaining  = Math.floor((expiresAt - nowServer) / 1000);
+      if (remaining > 0 && remaining <= 600) {
+        secondsLeft = remaining;
+      } else if (remaining <= 0) {
+        // Already expired
+        Toast.error('Reservation expired. Please book again.');
+        setTimeout(() => window.location.href = '/book', 2000);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  const m0 = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+  const s0 = String(secondsLeft % 60).padStart(2, '0');
+  document.getElementById('countdown').textContent = `${m0}:${s0}`;
+
   timerInterval = setInterval(() => {
     secondsLeft--;
     const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
     const s = String(secondsLeft % 60).padStart(2, '0');
     document.getElementById('countdown').textContent = `${m}:${s}`;
+    if (secondsLeft <= 60) {
+      document.getElementById('countdown').style.color = '#ef4444';
+    }
     if (secondsLeft <= 0) {
       clearInterval(timerInterval);
       Toast.error('Reservation expired. Please book again.');
@@ -497,7 +548,9 @@ try {
   });
 } catch(e) {}
 
-loadSeats(); startTimer(); updateSummary();
+loadSeats();
+calibrateServerTime().then(() => { startTimer(); });
+updateSummary();
 </script>
 <script>if(typeof Auth!=="undefined"&&!Auth.getToken()){window.location.href="/login";}</script>
 </body>

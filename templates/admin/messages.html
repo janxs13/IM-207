@@ -34,7 +34,7 @@
       <nav>
         <a href="/profile"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Profile</a>
         <a href="/book"><span class="nav-icon"><i class="fa-solid fa-eye"></i></span> Passenger View</a>
-        <a href="/login" onclick="localStorage.removeItem('currentUser');localStorage.removeItem('access_token');"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
+        <a href="/login" onclick="Auth.logout(); return false;"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Logout</a>
       </nav>
     </div>
   </aside>

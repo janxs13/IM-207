@@ -81,5 +81,174 @@
 
 <footer>BusBook &copy; 2026 &nbsp;&mdash;&nbsp; <a href="/routes">Routes</a> &nbsp;&middot;&nbsp; <a href="/contact">Contact</a> &nbsp;&middot;&nbsp; <a href="/about">About</a></footer>
 <div id="toast-container"></div>
-</body>
-</html>
+
+<!-- ── Post-login welcome popup with fleet info ─────────────── -->
+<div id="busInfoOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface,#fff);border-radius:20px;max-width:560px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.25);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,var(--brand,#f4a261),var(--brand-darker,#e76f51));padding:22px 24px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">🚌</div>
+        <div>
+          <div style="font-family:var(--font-display,Arial);font-size:17px;font-weight:800;color:#fff;" id="popupGreeting">Welcome back!</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.85);">Here's what's available today</div>
+        </div>
+      </div>
+      <button onclick="closeBusPopup()" style="background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3,#94a3b8);margin-bottom:14px;">
+        <i class="fa-solid fa-bus" style="color:var(--brand,#f4a261);margin-right:5px;"></i>Our Fleet
+      </div>
+      <div id="popupBusList" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="text-align:center;padding:20px;color:var(--text-3,#94a3b8);font-size:13px;">Loading fleet info…</div>
+      </div>
+
+      <div style="margin-top:18px;border-top:1px solid var(--border,#e2e8f0);padding-top:16px;">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3,#94a3b8);margin-bottom:12px;">
+          <i class="fa-solid fa-map-location-dot" style="color:var(--brand,#f4a261);margin-right:5px;"></i>Available Routes
+        </div>
+        <div id="popupRouteList" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="text-align:center;padding:12px;color:var(--text-3,#94a3b8);font-size:13px;">Loading routes…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:14px 24px;border-top:1px solid var(--border,#e2e8f0);display:flex;gap:10px;background:var(--surface2,#f8f9fa);">
+      <a href="/book" style="flex:1;">
+        <button style="width:100%;padding:11px;background:var(--brand,#f4a261);color:#fff;border:none;border-radius:10px;font-family:var(--font-body,sans-serif);font-size:14px;font-weight:700;cursor:pointer;">
+          <i class="fa-solid fa-ticket"></i> Book Now
+        </button>
+      </a>
+      <button onclick="closeBusPopup()" style="padding:11px 18px;background:var(--surface,#fff);border:1.5px solid var(--border-dark,#cbd5e1);border-radius:10px;font-family:var(--font-body,sans-serif);font-size:14px;font-weight:600;cursor:pointer;color:var(--text-2,#475569);">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/auth.js"></script>
+<script>
+function closeBusPopup() {
+  document.getElementById('busInfoOverlay').style.display = 'none';
+  // Remember dismissed for this session — don't re-show on refresh
+  sessionStorage.setItem('busPopupDismissed', '1');
+}
+
+function fmtTime(raw) {
+  if (!raw) return '';
+  if (raw.includes && raw.includes('T')) {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime()))
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  return raw;
+}
+
+async function showBusPopup(user) {
+  // Only show once per session
+  if (sessionStorage.getItem('busPopupDismissed')) return;
+
+document.getElementById('popupGreeting').textContent =
+    'Welcome, ' + (user.first_name || user.name || user.email || 'Passenger') + '!';
+  document.getElementById('busInfoOverlay').style.display = 'flex';
+
+// Load fleet (public endpoint - no auth required)
+  try {
+    const busRes = await fetch('/api/admin/buses/public');
+    if (busRes.ok) {
+      const bd = await busRes.json();
+      const buses = bd.buses || bd || [];
+      if (buses.length) {
+        document.getElementById('popupBusList').innerHTML = buses.map(b => `
+          <div style="display:flex;align-items:center;gap:12px;background:var(--surface2,#f8f9fa);border:1.5px solid var(--border,#e2e8f0);border-radius:12px;padding:12px 14px;">
+            ${b.image_url
+              ? `<img src="${b.image_url}" alt="${b.bus_name||b.name}" style="width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#e2e8f0);flex-shrink:0;">`
+              : `<div style="width:72px;height:48px;background:var(--surface,#fff);border:1.5px dashed var(--border-dark,#cbd5e1);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-3,#94a3b8);font-size:22px;flex-shrink:0;"><i class="fa-solid fa-bus"></i></div>`
+            }
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--font-display,Arial);font-size:14px;font-weight:800;color:var(--text-1,#1e293b);margin-bottom:2px;">${b.bus_name||b.name||'—'}</div>
+              <div style="font-size:11px;color:var(--text-3,#94a3b8);font-family:monospace;">${b.plate_number||''}</div>
+              <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                <span style="font-size:10px;font-weight:700;background:rgba(244,162,97,0.12);color:var(--brand-darker,#e76f51);border-radius:20px;padding:1px 8px;">
+                  <i class="fa-solid fa-couch" style="margin-right:3px;"></i>${b.total_seats||'—'} seats
+                </span>
+                <span style="font-size:10px;font-weight:700;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:1px 8px;color:var(--text-2,#475569);">
+                  ${b.seat_layout||'standard'}
+                </span>
+                <span style="font-size:10px;font-weight:700;border-radius:20px;padding:1px 8px;
+                  ${b.is_active !== false
+                    ? 'background:rgba(16,185,129,0.1);color:#059669;'
+                    : 'background:rgba(239,68,68,0.1);color:#dc2626;'}">
+                  ${b.is_active !== false ? '● Active' : '● Inactive'}
+                </span>
+              </div>
+            </div>
+          </div>`).join('');
+      } else {
+        document.getElementById('popupBusList').innerHTML =
+          '<div style="text-align:center;padding:12px;color:var(--text-3,#94a3b8);font-size:13px;">No buses in fleet yet.</div>';
+      }
+    }
+  } catch(e) {}
+
+  // Load routes (schedules)
+  try {
+    const schedRes = await fetch('/api/schedules/');
+    if (schedRes.ok) {
+      const sd = await schedRes.json();
+      const scheds = Array.isArray(sd) ? sd : (sd.schedules || []);
+      if (scheds.length) {
+        document.getElementById('popupRouteList').innerHTML = scheds.slice(0, 5).map(s => {
+          const parts = (s.route || '').split(' - ');
+          const seats = s.seats_available ?? s.available_seats ?? 0;
+          const depTime = fmtTime(s.departure_time);
+          return `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2,#f8f9fa);border-radius:10px;border:1px solid var(--border,#e2e8f0);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <i class="fa-solid fa-route" style="color:var(--brand,#f4a261);font-size:13px;"></i>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text-1,#1e293b);">
+                    ${parts[0]||s.route} → ${parts[1]||'—'}
+                  </div>
+                  ${depTime ? `<div style="font-size:11px;color:var(--text-3,#94a3b8);">Departs ${depTime}</div>` : ''}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;">
+                <div style="font-family:var(--font-display,Arial);font-size:14px;font-weight:800;color:var(--brand-darker,#e76f51);">
+                  ₱${parseFloat(s.fare||s.price||0).toLocaleString('en-PH',{minimumFractionDigits:2})}
+                </div>
+                <span style="font-size:10px;font-weight:700;border-radius:20px;padding:1px 7px;
+                  ${seats > 0
+                    ? 'background:rgba(16,185,129,0.1);color:#059669;'
+                    : 'background:rgba(239,68,68,0.1);color:#dc2626;'}">
+                  ${seats > 0 ? seats + ' seats' : 'Full'}
+                </span>
+              </div>
+            </div>`;
+        }).join('') +
+        (scheds.length > 5
+          ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--text-3,#94a3b8);">+${scheds.length - 5} more routes — <a href="/routes" style="color:var(--brand,#f4a261);font-weight:700;">View all</a></div>`
+          : '');
+      } else {
+        document.getElementById('popupRouteList').innerHTML =
+          '<div style="text-align:center;padding:12px;color:var(--text-3,#94a3b8);font-size:13px;">No routes available yet.</div>';
+      }
+    }
+  } catch(e) {}
+}
+
+// Show popup only if user just came from login (flag set by login page)
+window.addEventListener('load', function() {
+  const user = (() => { try { return JSON.parse(localStorage.getItem('currentUser')); } catch(e) { return null; } })();
+  const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+  if (user && justLoggedIn) {
+    sessionStorage.removeItem('justLoggedIn');
+    showBusPopup(user);
+  }
+});
+</script>

@@ -2,9 +2,14 @@ import threading
 import time
 import sqlite3
 import os
+from datetime import datetime
+from dotenv import load_dotenv
 from flask import Flask, render_template, redirect
 from config import Config
 from extensions import db, jwt, socketio, limiter, mail
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def _safe_migrate(app):
@@ -40,6 +45,17 @@ def _safe_migrate(app):
         ("bus",      "is_active",              "ALTER TABLE bus     ADD COLUMN is_active              BOOLEAN DEFAULT 1"),
         ("bus",      "image_filename",         "ALTER TABLE bus     ADD COLUMN image_filename         VARCHAR(200)"),
         ("contact_message", "replied_at",      "ALTER TABLE contact_message ADD COLUMN replied_at     DATETIME"),
+        ("booking",  "passenger_type",  "ALTER TABLE booking ADD COLUMN passenger_type  VARCHAR(20) DEFAULT 'regular'"),
+        ("booking",  "discount_type",   "ALTER TABLE booking ADD COLUMN discount_type   VARCHAR(20)"),
+        ("booking",  "discount_amount", "ALTER TABLE booking ADD COLUMN discount_amount FLOAT DEFAULT 0"),
+        ("booking",  "original_amount", "ALTER TABLE booking ADD COLUMN original_amount FLOAT"),
+        ("booking",  "id_number",       "ALTER TABLE booking ADD COLUMN id_number       VARCHAR(100)"),
+        ("booking",  "id_type",         "ALTER TABLE booking ADD COLUMN id_type         VARCHAR(50)"),
+        ("schedule", "distance_km",     "ALTER TABLE schedule ADD COLUMN distance_km    FLOAT"),
+        ("schedule", "bus_type",        "ALTER TABLE schedule ADD COLUMN bus_type       VARCHAR(50) DEFAULT 'ordinary'"),
+        ("schedule", "trip_status",     "ALTER TABLE schedule ADD COLUMN trip_status    VARCHAR(30) DEFAULT 'scheduled'"),
+        ("schedule", "delay_minutes",   "ALTER TABLE schedule ADD COLUMN delay_minutes  INTEGER DEFAULT 0"),
+        ("schedule", "delay_reason",    "ALTER TABLE schedule ADD COLUMN delay_reason   VARCHAR(200)"),
     ]
 
     for table, col, sql in pending:
@@ -148,6 +164,34 @@ def create_app():
     def rate_limited(e):
         from flask import jsonify
         return jsonify({"error": "Too many requests. Please slow down and try again."}), 429
+
+    # ── Server time endpoint (trusted source for expiry checks) ──
+    @app.route("/api/time")
+    def server_time():
+        from flask import jsonify
+        from datetime import timezone
+        now = datetime.utcnow().replace(tzinfo=timezone.utc)
+        return jsonify({
+            "utc":       now.isoformat(),
+            "timestamp": now.timestamp()
+        })
+
+    @app.route("/paymongo")
+    def paymongo_page():      return render_template("user/paymongo.html")
+
+    @app.route("/payment/paymongo/success")
+    def paymongo_success():
+        """PayMongo redirects here after successful e-wallet payment."""
+        from flask import request as req, redirect as redir
+        ref = req.args.get("ref", "")
+        return redir(f"/ticket?code={ref}")
+
+    @app.route("/payment/paymongo/failed")
+    def paymongo_failed():
+        """PayMongo redirects here after a failed e-wallet payment."""
+        from flask import request as req, redirect as redir
+        ref = req.args.get("ref", "")
+        return redir(f"/transaction?error=payment_failed&ref={ref}")
 
     with app.app_context():
         _safe_migrate(app)

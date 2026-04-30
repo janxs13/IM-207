@@ -155,42 +155,25 @@ def select_seat():
     )
 
 
+
+
+# ── GET /api/bookings/my — current user bookings ─────────────────
+@booking_bp.route("/my", methods=["GET"])
+@jwt_required()
+def my_bookings():
+    """Convenience alias — returns bookings for the logged-in user."""
+    current_user_id = int(get_jwt_identity())
+    return jsonify(get_user_bookings(current_user_id))
+
 # ── POST /api/bookings/cancel/<code> ─────────────────────────────
 @booking_bp.route("/cancel/<code>", methods=["POST"])
 @jwt_required()
 def cancel(code):
-    booking = Booking.query.filter_by(booking_code=code.strip().upper()).first()
-    if not booking:
-        return jsonify({"error": "Booking not found"}), 404
-
+    from services.booking_service import cancel_booking
     current_user_id = int(get_jwt_identity())
-    if booking.user_id != current_user_id and not current_user_is_admin():
-        return jsonify({"error": "Access denied"}), 403
-
-    if booking.status == "confirmed":
-        return jsonify({"error": "Cannot cancel a confirmed booking"}), 400
-
-    schedule = Schedule.query.get(booking.schedule_id)
-    if schedule and booking.passenger_count:
-        schedule.seats_available += booking.passenger_count
-
-    seats_cancelled = [s.strip() for s in (booking.seat_number or "").split(",") if s.strip()]
-    booking.status = "cancelled"
-
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "Failed to cancel booking. Please try again."}), 500
-
-    try:
-        from sockets.seat_socket import emit_seat_update
-        for s in seats_cancelled:
-            emit_seat_update(booking.schedule_id, s, "available")
-    except Exception:
-        pass
-
-    return jsonify({"message": "Booking cancelled successfully"})
+    is_admin = current_user_is_admin()
+    result, status = cancel_booking(code.strip().upper(), current_user_id, is_admin)
+    return jsonify(result), status
 
 
 # ── GET /api/bookings/code/<booking_code> ────────────────────────

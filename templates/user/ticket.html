@@ -162,6 +162,7 @@
         <div class="amount-bar">
           <div>
             <div class="label"><i class="fa-solid fa-peso-sign"></i> Amount Paid</div>
+            <div id="discountTicketInfo" style="display:none;font-size:11px;color:#059669;font-weight:600;margin-top:2px;"></div>
           </div>
           <div class="amount">₱<span id="amountPaid">0.00</span></div>
         </div>
@@ -237,6 +238,15 @@ function populateTicket(booking, user) {
   document.getElementById('paymentMethod').textContent  = localStorage.getItem('receiptPayment') || booking.payment_method || '—';
   document.getElementById('amountPaid').textContent     = amount.toFixed(2);
   document.getElementById('refCode').textContent        = code;
+
+  // Show discount info on ticket if applicable
+  const paxType = booking.passenger_type || localStorage.getItem('passengerType') || 'regular';
+  const discEl  = document.getElementById('discountTicketInfo');
+  if (discEl && (paxType === 'senior' || paxType === 'pwd')) {
+    const discAmt = booking.discount_amount || 0;
+    discEl.style.display = 'block';
+    discEl.textContent   = `${paxType.toUpperCase()} 20% discount — saved ₱${Number(discAmt).toFixed(2)}`;
+  }
 
   // Bus info
   if (busName) {

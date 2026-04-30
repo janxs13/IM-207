@@ -193,7 +193,8 @@ async function loginUser() {
       localStorage.setItem('currentUser',  JSON.stringify(data.user));
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('authToken',    data.access_token); // backward compat
-      window.location.href = data.user.role === 'admin' ? '/admin' : '/book';
+      sessionStorage.setItem('justLoggedIn', '1'); // triggers bus info popup
+      window.location.href = data.user.role === 'admin' ? '/admin' : '/';
     } else {
       showError(data.error || data.message || 'Invalid email or password.');
       btn.disabled = false;

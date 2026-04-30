@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/user.css">
 <style>
-/* Fare summary pill */
+/* ── Fare summary ─────────────────────────────────────── */
 .fare-summary {
   display: none;
   align-items: center;
@@ -32,103 +32,197 @@
   margin-left: auto;
 }
 
-/* Bus preview card — shown below fare summary when schedule is selected */
-.bus-preview {
-  display: none;
+/* ── Schedule card ────────────────────────────────────── */
+/* Each schedule is a self-contained card with two rows:
+   row 1 — route info (left) + fare+seats+button (right)
+   row 2 — bus info strip (always visible, like routes page)       */
+.sched-card {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.sched-card:last-child { border-bottom: none; }
+.sched-card:hover .sched-top { background: var(--surface2); }
+.sched-card.selected-card .sched-top {
+  background: var(--brand-light);
+  border-left: 3px solid var(--brand);
+}
+.sched-card.selected-card .sched-bus-strip {
+  background: rgba(244,162,97,0.06);
+  border-top-color: rgba(244,162,97,0.25);
+}
+
+/* Top row — route + fare + button */
+.sched-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px 12px;
+  transition: background 0.12s;
+}
+
+/* Route section */
+.sched-route {
+  flex: 1;
+  display: flex;
+  align-items: center;
   gap: 14px;
-  align-items: center;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-top: 10px;
+  min-width: 0;
 }
-.bus-preview.show { display: flex; }
-.bus-preview-img {
-  width: 110px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1.5px solid var(--border);
-  flex-shrink: 0;
-  background: var(--surface2);
+.sched-city {
+  text-align: center;
+  min-width: 80px;
 }
-.bus-preview-placeholder {
-  width: 110px;
-  height: 72px;
-  border-radius: 8px;
-  border: 1.5px dashed var(--border-dark);
-  background: var(--surface2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.sched-city-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
   color: var(--text-3);
-  font-size: 28px;
-  flex-shrink: 0;
-}
-.bus-preview-info { flex: 1; min-width: 0; }
-.bus-preview-name {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text-1);
-  margin-bottom: 3px;
-}
-.bus-preview-plate {
-  font-size: 12px;
-  color: var(--text-3);
-  font-family: monospace;
   margin-bottom: 4px;
-}
-.bus-preview-meta {
-  font-size: 12px;
-  color: var(--text-2);
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.bus-preview-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-
-/* Schedule row */
-.sched-row {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 20px; border-bottom: 1px solid var(--border);
-  transition: background 0.12s; cursor: pointer;
+.sched-city-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+  word-break: break-word;
 }
-.sched-row:last-child { border-bottom: none; }
-.sched-row:hover { background: var(--surface2); }
-.sched-row.selected-row {
-  background: var(--brand-light);
-  border-left: 3px solid var(--brand);
+.sched-city-time {
+  font-size: 12px;
+  color: var(--brand-darker);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.sched-city-date {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 1px;
 }
 
-.route-col { flex: 1; display: flex; align-items: center; gap: 20px; }
-.city-box  { text-align: center; min-width: 90px; }
-.city-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
-.city-time { font-size: 12px; color: var(--text-3); }
-
-.route-line { flex: 1; height: 1.5px; background: var(--border-dark); position: relative; }
-.route-line-bus {
-  position: absolute; top: 50%; left: 50%;
+/* Connector */
+.sched-connector {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+}
+.sched-connector-line {
+  width: 100%;
+  height: 1.5px;
+  background: var(--border-dark);
+  position: relative;
+}
+.sched-connector-icon {
+  position: absolute;
+  top: 50%; left: 50%;
   transform: translate(-50%,-50%);
-  background: var(--surface); padding: 0 6px;
-  color: var(--brand); font-size: 13px;
+  background: var(--surface);
+  padding: 0 5px;
+  color: var(--brand);
+  font-size: 12px;
 }
 
-.fare-col { text-align: right; min-width: 100px; }
-.fare-per  { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
-.fare-amount {
-  font-family: var(--font-display); font-size: 18px;
-  font-weight: 800; color: var(--brand-darker);
+/* Fare column */
+.sched-fare {
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 90px;
 }
-.fare-total {
-  font-size: 12px; color: var(--brand-darker); font-weight: 600;
+.sched-fare-label { font-size: 11px; color: var(--text-3); margin-bottom: 1px; }
+.sched-fare-amount {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-darker);
+}
+.sched-fare-total {
+  font-size: 11px; color: var(--brand-darker); font-weight: 600;
   background: var(--brand-light); border-radius: 6px;
-  padding: 2px 7px; display: inline-block; margin-top: 3px;
+  padding: 2px 6px; display: inline-block; margin-top: 2px;
+}
+
+/* ── Bus info strip (always visible below route row) ──── */
+.sched-bus-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 20px 11px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.sched-bus-thumb {
+  width: 72px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+  display: block;
+}
+.sched-bus-thumb-placeholder {
+  width: 72px;
+  height: 46px;
+  border-radius: 7px;
+  border: 1.5px dashed var(--border-dark);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.sched-bus-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sched-bus-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.sched-bus-plate {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: monospace;
+}
+.sched-bus-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sched-bus-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1px 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.sched-bus-tag i { color: var(--brand); font-size: 9px; }
+
+/* "No bus assigned" fallback */
+.sched-bus-none {
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
 }
 
 /* Demo mode banner */
@@ -160,22 +254,23 @@
     <a href="/contact"><i class="fa-solid fa-envelope"></i> Contact</a>
     <a href="/about"><i class="fa-solid fa-circle-info"></i> About</a>
     <a href="/profile"><i class="fa-solid fa-user"></i> Profile</a>
-    <a href="/login" onclick="logout()" class="nav-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    <a href="/login" onclick="logout()" class="nav-logout">
+      <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
   </nav>
 
-  <!-- Demo mode banner (shown to admin only) -->
   <div id="demoBanner" class="demo-banner">
     <i class="fa-solid fa-flask"></i> Demo Mode
     <span class="demo-badge">Admin Preview</span>
     &mdash; Bookings are simulated and will not be saved.
   </div>
 
-  <div class="page-content" style="max-width:900px;">
+  <div class="page-content" style="max-width:960px;">
     <div class="page-header">
       <div class="page-title">
         <i class="fa-solid fa-ticket" style="color:var(--brand);margin-right:8px;"></i>Book Your Ride
       </div>
-      <div class="page-subtitle">Search schedules, set passenger count, see your total fare instantly</div>
+      <div class="page-subtitle">Select a schedule — bus details shown on each card</div>
     </div>
 
     <!-- SEARCH + PASSENGER CARD -->
@@ -222,36 +317,63 @@
                    style="text-align:center;font-weight:700;">
           </div>
 
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">
+              <i class="fa-solid fa-id-card" style="color:var(--brand);"></i> Passenger Type
+            </label>
+            <select id="passengerType" class="form-control" onchange="onPassengerTypeChange()">
+              <option value="regular">Regular</option>
+              <option value="senior">Senior Citizen (20% off)</option>
+              <option value="pwd">PWD (20% off)</option>
+              <option value="student">Student</option>
+            </select>
+          </div>
+
           <button class="btn btn-primary" style="width:100%;height:44px;align-self:flex-end;"
                   onclick="searchSchedules()">
             <i class="fa-solid fa-magnifying-glass"></i> Search
           </button>
         </div>
 
-        <!-- FARE SUMMARY -->
-        <div class="fare-summary" id="fareSummary">
-          <i class="fa-solid fa-calculator" style="color:var(--brand);font-size:15px;"></i>
-          <span class="eq-part">
-            &#8369;<span id="sumFare">0.00</span> &times; <span id="sumPax">1</span> passenger(s)
-          </span>
-          <span style="color:var(--text-3);">=</span>
-          <span class="eq-result">&#8369;<span id="sumTotal">0.00</span></span>
-        </div>
-
-        <!-- BUS PREVIEW CARD -->
-        <div class="bus-preview" id="busPreview">
-          <!-- image or placeholder injected by JS -->
-          <div id="busPreviewMedia"></div>
-          <div class="bus-preview-info">
-            <div class="bus-preview-name" id="busPreviewName">—</div>
-            <div class="bus-preview-plate" id="busPreviewPlate"></div>
-            <div class="bus-preview-meta">
-              <span><i class="fa-solid fa-couch" style="color:var(--brand);"></i> <span id="busPreviewSeats">—</span> seats</span>
-              <span><i class="fa-solid fa-table-columns" style="color:var(--brand);"></i> <span id="busPreviewLayout">—</span></span>
+        <!-- ID Number field — shown for senior/pwd -->
+        <div id="idSection" style="display:none;margin-top:12px;padding:12px 14px;background:rgba(244,162,97,0.06);border:1.5px solid rgba(244,162,97,0.3);border-radius:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--brand-darker);margin-bottom:8px;">
+            <i class="fa-solid fa-id-card"></i> Discount ID Verification Required
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" style="font-size:11px;">ID Type</label>
+              <select id="idType" class="form-control" style="font-size:13px;padding:8px 10px;">
+                <option value="OSCA Card">OSCA Card (Senior)</option>
+                <option value="PWD ID">PWD ID</option>
+                <option value="PhilSys ID">PhilSys ID</option>
+              </select>
             </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" style="font-size:11px;">ID Number</label>
+              <input type="text" id="idNumber" class="form-control"
+                     placeholder="e.g. 12345678" style="font-size:13px;padding:8px 10px;">
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;">
+            <i class="fa-solid fa-circle-info"></i>
+            Per RA 9994 / RA 7277 — 20% discount will be applied. ID will be verified at boarding.
           </div>
         </div>
 
+        <!-- FARE SUMMARY — appears when a schedule is clicked -->
+        <div class="fare-summary" id="fareSummary">
+          <i class="fa-solid fa-calculator" style="color:var(--brand);font-size:15px;"></i>
+          <span class="eq-part">
+            &#8369;<span id="sumFare">0.00</span>
+            &times; <span id="sumPax">1</span> passenger(s)
+          </span>
+          <span style="color:var(--text-3);">=</span>
+          <span class="eq-result">&#8369;<span id="sumTotal">0.00</span></span>
+          <span id="discountBadge" style="display:none;background:rgba(16,185,129,0.12);color:#059669;
+            border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:2px 10px;font-size:11px;
+            font-weight:700;margin-left:4px;"></span>
+        </div>
       </div>
     </div>
 
@@ -267,12 +389,11 @@
           </span>
           <span class="badge badge-green" id="scheduleCount"></span>
         </div>
-        <div id="scheduleList" style="padding:4px 0;">
+        <div id="scheduleList" style="padding:0;">
           <div class="empty-state"><div class="spinner"></div></div>
         </div>
       </div>
     </div>
-
   </div>
 
   <footer>BusBook &copy; 2026 &mdash; Safe travels!</footer>
@@ -288,7 +409,8 @@ function authFetch(url, opts={}) {
   const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
   if (!opts.headers) opts.headers = {};
   opts.headers['Authorization'] = 'Bearer ' + token;
-  if (opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+  if (opts.body && !opts.headers['Content-Type'])
+    opts.headers['Content-Type'] = 'application/json';
   return fetch(url, opts);
 }
 
@@ -310,112 +432,45 @@ function fmtDate(raw) {
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
 }
-function fmtArrival(raw) {
-  if (!raw) return '—';
-  if (raw.includes('T')) {
-    const d = new Date(raw);
-    if (!isNaN(d.getTime()))
-      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  }
-  return raw;
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* ── Fare summary ────────────────────────────────────── */
+/* ── Fare summary (top card) ─────────────────────────── */
 function updateFareSummary() {
   if (!selectedSched) return;
-  const pax   = parseInt(document.getElementById('passengerCount').value) || 1;
-  const fare  = parseFloat(selectedSched.fare || selectedSched.price || 0);
-  const total = fare * pax;
+  const pax          = parseInt(document.getElementById('passengerCount').value) || 1;
+  const fare         = parseFloat(selectedSched.fare || selectedSched.price || 0);
+  const paxType      = document.getElementById('passengerType')?.value || 'regular';
+  const discountRate = (paxType === 'senior' || paxType === 'pwd') ? 0.20 : 0.00;
+  const grossTotal   = fare * pax;
+  const discountAmt  = grossTotal * discountRate;
+  const netTotal     = grossTotal - discountAmt;
+
   document.getElementById('sumFare').textContent  = fare.toFixed(2);
   document.getElementById('sumPax').textContent   = pax;
-  document.getElementById('sumTotal').textContent = total.toFixed(2);
+  document.getElementById('sumTotal').textContent = netTotal.toFixed(2);
   document.getElementById('fareSummary').classList.add('show');
-}
 
-/* ── Bus preview card ────────────────────────────────── */
-function updateBusPreview() {
-  const s = selectedSched;
-  if (!s || !s.bus_name) {
-    document.getElementById('busPreview').classList.remove('show');
-    return;
+  const badge = document.getElementById('discountBadge');
+  if (discountRate > 0 && badge) {
+    badge.textContent = `${(discountRate*100).toFixed(0)}% ${paxType.toUpperCase()} discount applied — saved ₱${discountAmt.toFixed(2)}`;
+    badge.style.display = 'inline-block';
+  } else if (badge) {
+    badge.style.display = 'none';
   }
+}
 
-  // Image or placeholder
-  const mediaEl = document.getElementById('busPreviewMedia');
-  if (s.bus_image_url) {
-    mediaEl.innerHTML = `<img class="bus-preview-img" src="${s.bus_image_url}" alt="${s.bus_name}" loading="lazy">`;
-  } else {
-    mediaEl.innerHTML = `<div class="bus-preview-placeholder" title="No photo uploaded for this bus"><i class="fa-solid fa-bus"></i></div>`;
+function onPassengerTypeChange() {
+  const paxType = document.getElementById('passengerType')?.value || 'regular';
+  const idSection = document.getElementById('idSection');
+  if (idSection) {
+    idSection.style.display = (paxType === 'senior' || paxType === 'pwd') ? 'block' : 'none';
   }
-
-  document.getElementById('busPreviewName').textContent   = s.bus_name || '—';
-  document.getElementById('busPreviewPlate').textContent  = s.bus_plate || '';
-  document.getElementById('busPreviewSeats').textContent  = s.total_seats || '—';
-  document.getElementById('busPreviewLayout').textContent = s.seat_layout || '—';
-
-  document.getElementById('busPreview').classList.add('show');
+  if (selectedSched) updateFareSummary();
 }
 
-/* ── Render a single schedule row ────────────────────── */
-function makeSchedRow(s, idx) {
-  const parts   = s.route.split(' - ');
-  const seats   = s.seats_available ?? s.available_seats ?? 0;
-  const fare    = parseFloat(s.fare || s.price || 0);
-  const pax     = parseInt(document.getElementById('passengerCount').value) || 1;
-  const total   = fare * pax;
-  const isFull  = seats === 0;
-  const badge   = seats > 10 ? 'badge-green' : seats > 3 ? 'badge-yellow' : 'badge-red';
-  const depDate = fmtDate(s.departure_time);
-
-  return `
-  <div class="sched-row" id="srow-${idx}" onclick="highlightRow(${idx})">
-    <div class="route-col">
-      <div class="city-box">
-        <div class="city-name">${parts[0] || s.route}</div>
-        <div class="city-time">${fmtTime(s.departure_time)}</div>
-        ${depDate ? `<div class="city-time" style="font-size:10px;margin-top:1px;">${depDate}</div>` : ''}
-      </div>
-      <div class="route-line">
-        <div class="route-line-bus"><i class="fa-solid fa-bus"></i></div>
-      </div>
-      <div class="city-box">
-        <div class="city-name">${parts[1] || '—'}</div>
-        <div class="city-time">${fmtArrival(s.arrival_time)}</div>
-      </div>
-    </div>
-
-    <span class="badge ${badge}" style="flex-shrink:0;">
-      ${isFull ? 'Full' : seats + ' seats'}
-    </span>
-
-    <div class="fare-col">
-      <div class="fare-per">per seat</div>
-      <div class="fare-amount">&#8369;${fare.toFixed(2)}</div>
-      <div class="fare-total" id="ftotal-${idx}">
-        ${pax > 1 ? '&#8369;' + total.toFixed(2) + ' total' : ''}
-      </div>
-    </div>
-
-    <button class="btn btn-primary btn-sm" style="flex-shrink:0;"
-            onclick="event.stopPropagation(); bookNow(${idx})"
-            ${isFull ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
-      ${isFull ? 'Full' : '<i class="fa-solid fa-arrow-right"></i> Book'}
-    </button>
-  </div>`;
-}
-
-/* ── Highlight row ───────────────────────────────────── */
-function highlightRow(idx) {
-  document.querySelectorAll('.sched-row').forEach(r => r.classList.remove('selected-row'));
-  const rowEl = document.getElementById('srow-' + idx);
-  if (rowEl) rowEl.classList.add('selected-row');
-  selectedSched = allSchedules[idx];
-  updateFareSummary();
-  updateBusPreview();
-  refreshTotals();
-}
-
-/* ── Refresh totals ──────────────────────────────────── */
+/* ── Refresh total fare pills in all rows ────────────── */
 function refreshTotals() {
   const pax = parseInt(document.getElementById('passengerCount').value) || 1;
   allSchedules.forEach((s, idx) => {
@@ -426,6 +481,124 @@ function refreshTotals() {
     el.innerHTML = pax > 1 ? `&#8369;${total.toFixed(2)} total` : '';
   });
   if (selectedSched) updateFareSummary();
+}
+
+/* ── Build one schedule card ─────────────────────────── */
+function makeSchedCard(s, idx) {
+  const parts   = (s.route || '').split(' - ');
+  const origin  = esc(parts[0] || s.route);
+  const dest    = esc(parts[1] || '—');
+  const seats   = s.seats_available ?? s.available_seats ?? 0;
+  const isFull  = seats === 0;
+  const badge   = isFull ? 'badge-red' : seats > 10 ? 'badge-green' : 'badge-yellow';
+  const fare    = parseFloat(s.fare || s.price || 0);
+  const pax     = parseInt(document.getElementById('passengerCount').value) || 1;
+  const total   = fare * pax;
+  const depDate = fmtDate(s.departure_time);
+
+  /* ── Bus strip ── */
+  let busThumb = '';
+  if (s.bus_image_url) {
+    busThumb = `<img class="sched-bus-thumb" src="${esc(s.bus_image_url)}" alt="${esc(s.bus_name||'Bus')}" loading="lazy">`;
+  } else {
+    busThumb = `<div class="sched-bus-thumb-placeholder" title="No photo uploaded yet">
+                  <i class="fa-solid fa-bus"></i>
+                </div>`;
+  }
+
+  let busBody = '';
+  if (s.bus_name) {
+    busBody = `
+      <div class="sched-bus-name">${esc(s.bus_name)}</div>
+      ${s.bus_plate ? `<div class="sched-bus-plate">${esc(s.bus_plate)}</div>` : ''}
+      <div class="sched-bus-tags">
+        ${s.total_seats  ? `<span class="sched-bus-tag"><i class="fa-solid fa-couch"></i>${s.total_seats} seats</span>` : ''}
+        ${s.seat_layout  ? `<span class="sched-bus-tag"><i class="fa-solid fa-table-columns"></i>${esc(s.seat_layout)}</span>` : ''}
+        <span class="sched-bus-tag" style="color:var(--green,#10b981);border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.06);">
+          <i class="fa-solid fa-circle-check" style="color:var(--green,#10b981);"></i> Active
+        </span>
+      </div>`;
+  } else {
+    busBody = `<span class="sched-bus-none"><i class="fa-solid fa-triangle-exclamation"></i> No bus assigned to this schedule</span>`;
+  }
+
+  return `
+  <div class="sched-card" id="scard-${idx}" onclick="selectCard(${idx})">
+
+    <!-- TOP ROW: route + seats + fare + button -->
+    <div class="sched-top">
+
+<!-- Route -->
+      <div class="sched-route">
+        <div class="sched-city">
+          <div class="sched-city-label">
+            <i class="fa-solid fa-circle-dot" style="color:var(--brand);"></i>
+            Origin Terminal
+          </div>
+          <div class="sched-city-name">${origin}</div>
+          <div class="sched-city-time">${fmtTime(s.departure_time)}</div>
+          ${depDate ? `<div class="sched-city-date">${depDate}</div>` : ''}
+        </div>
+
+        <div class="sched-connector" style="flex:1;">
+          <div class="sched-connector-line">
+            <div class="sched-connector-icon"><i class="fa-solid fa-bus"></i></div>
+          </div>
+        </div>
+
+        <div class="sched-city">
+          <div class="sched-city-label">
+            <i class="fa-solid fa-location-pin" style="color:var(--brand);"></i>
+            Destination Terminal
+          </div>
+          <div class="sched-city-name">${dest}</div>
+          <div class="sched-city-time">${fmtTime(s.arrival_time)}</div>
+        </div>
+      </div>
+
+      <!-- Seats badge -->
+      <span class="badge ${badge}" style="flex-shrink:0;">
+        ${isFull ? 'Full' : seats + ' seats'}
+      </span>
+
+      <!-- Fare -->
+      <div class="sched-fare">
+        <div class="sched-fare-label">per seat</div>
+        <div class="sched-fare-amount">&#8369;${fare.toFixed(2)}</div>
+        <div class="sched-fare-total" id="ftotal-${idx}">
+          ${pax > 1 ? '&#8369;' + total.toFixed(2) + ' total' : ''}
+        </div>
+      </div>
+
+      <!-- Book button -->
+      <button class="btn btn-primary btn-sm" style="flex-shrink:0;"
+              onclick="event.stopPropagation(); bookNow(${idx})"
+              ${isFull ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+        ${isFull
+          ? '<i class="fa-solid fa-ban"></i> Full'
+          : '<i class="fa-solid fa-arrow-right"></i> Book'}
+      </button>
+    </div>
+
+    <!-- BUS INFO STRIP: always visible below route row -->
+    <div class="sched-bus-strip">
+      ${busThumb}
+      <div class="sched-bus-info">
+        ${busBody}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+/* ── Select card ─────────────────────────────────────── */
+function selectCard(idx) {
+  document.querySelectorAll('.sched-card').forEach(c => c.classList.remove('selected-card'));
+  const card = document.getElementById('scard-' + idx);
+  if (card) card.classList.add('selected-card');
+  selectedSched = allSchedules[idx];
+  updateFareSummary();
+  refreshTotals();
 }
 
 /* ── Render list ─────────────────────────────────────── */
@@ -441,55 +614,59 @@ function renderList(list, container) {
       </div>`;
     return;
   }
-  container.innerHTML = list.map((s, idx) => makeSchedRow(s, idx)).join('');
+  container.innerHTML = list.map((s, idx) => makeSchedCard(s, idx)).join('');
 }
 
 /* ── Search ──────────────────────────────────────────── */
 function searchSchedules() {
-  const origin      = document.getElementById('origin').value.trim().toLowerCase();
-  const destination = document.getElementById('destination').value.trim().toLowerCase();
+  const origin = document.getElementById('origin').value.trim().toLowerCase();
+  const dest   = document.getElementById('destination').value.trim().toLowerCase();
 
-  if (!origin && !destination) {
+  if (!origin && !dest) {
     Toast.warning('Enter at least an origin or destination to search.');
     return;
   }
 
-  const filtered = allSchedules.filter(s =>
-    s.route.toLowerCase().includes(origin) &&
-    (!destination || s.route.toLowerCase().includes(destination))
-  );
+  const travelDate = document.getElementById('travelDate')?.value || '';
+  const filtered = allSchedules.filter(s => {
+    if (origin && !(s.route || '').toLowerCase().includes(origin)) return false;
+    if (dest   && !(s.route || '').toLowerCase().includes(dest))   return false;
+    if (travelDate && s.departure_time && !s.departure_time.startsWith(travelDate)) return false;
+    return true;
+  });
 
   selectedSched = null;
   document.getElementById('fareSummary').classList.remove('show');
-  document.getElementById('busPreview').classList.remove('show');
 
-  const resultsEl = document.getElementById('searchResults');
-  const allEl     = document.getElementById('allSchedules');
-  resultsEl.style.display = 'block';
-  allEl.style.display     = 'none';
+  document.getElementById('searchResults').style.display = 'block';
+  document.getElementById('allSchedules').style.display  = 'none';
 
   if (!filtered.length) {
-    resultsEl.innerHTML = `
+    document.getElementById('searchResults').innerHTML = `
       <div class="card"><div class="card-body">
         <div class="empty-state">
           <span class="empty-icon">🔍</span>
           <p>No schedules found.
-            <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="resetSearch()">Show all</button>
+            <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="resetSearch()">
+              Show all
+            </button>
           </p>
         </div>
       </div></div>`;
     return;
   }
 
-  resultsEl.innerHTML = `
+  document.getElementById('searchResults').innerHTML = `
     <div class="card">
       <div class="card-header">
-        <span class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Search Results</span>
+        <span class="card-title">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Results
+        </span>
         <button class="btn btn-outline btn-sm" onclick="resetSearch()">
           <i class="fa-solid fa-xmark"></i> Clear
         </button>
       </div>
-      <div id="resultList" style="padding:4px 0;"></div>
+      <div id="resultList" style="padding:0;"></div>
     </div>`;
   renderList(filtered, document.getElementById('resultList'));
 }
@@ -501,57 +678,68 @@ function resetSearch() {
   document.getElementById('destination').value = '';
   selectedSched = null;
   document.getElementById('fareSummary').classList.remove('show');
-  document.getElementById('busPreview').classList.remove('show');
 }
 
 /* ── Book Now ────────────────────────────────────────── */
 function bookNow(idx) {
-  const s = allSchedules[idx];
+  const s    = allSchedules[idx];
   if (!s) return;
   const user = JSON.parse(localStorage.getItem('currentUser'));
   if (!user) { window.location.href = '/login'; return; }
 
-  highlightRow(idx);
+  selectCard(idx);
 
   const pax   = parseInt(document.getElementById('passengerCount').value) || 1;
   const fare  = parseFloat(s.fare || s.price || 0);
   const total = (fare * pax).toFixed(2);
-
   const seats = s.seats_available ?? s.available_seats ?? 0;
+
   if (seats < pax) {
-    Toast.error(`Only ${seats} seat(s) available. Reduce passenger count.`);
+    Toast.error(`Only ${seats} seat(s) available. Please reduce passenger count.`);
     return;
   }
 
   const date  = document.getElementById('travelDate').value || new Date().toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
   if (date < today) {
-    Toast.error('Travel date cannot be in the past. Please select today or a future date.');
+    Toast.error('Travel date cannot be in the past.');
     document.getElementById('travelDate').value = today;
     return;
   }
 
+  const paxType  = document.getElementById('passengerType')?.value || 'regular';
+  const idNumber = document.getElementById('idNumber')?.value?.trim() || '';
+  const idType   = document.getElementById('idType')?.value || '';
+
+  // Validate ID for discount types
+  if ((paxType === 'senior' || paxType === 'pwd') && !idNumber) {
+    Toast.error(`Please enter your ${paxType === 'senior' ? 'OSCA Card' : 'PWD ID'} number to avail the discount.`);
+    document.getElementById('idNumber')?.focus();
+    return;
+  }
+
   localStorage.setItem('currentSchedule', JSON.stringify(s));
-  localStorage.setItem('selectedFrom',    s.route.split(' - ')[0] || s.route);
-  localStorage.setItem('selectedTo',      s.route.split(' - ')[1] || '—');
+  localStorage.setItem('selectedFrom',    (s.route || '').split(' - ')[0] || s.route);
+  localStorage.setItem('selectedTo',      (s.route || '').split(' - ')[1] || '—');
   localStorage.setItem('farePerSeat',     fare.toFixed(2));
   localStorage.setItem('selectedPrice',   total);
+  localStorage.setItem('passengerType',   paxType);
+  localStorage.setItem('idNumber',        idNumber);
+  localStorage.setItem('idType',          idType);
 
   createBookingAndGo(s, pax, total);
 }
 
 async function createBookingAndGo(schedule, pax, total) {
   const user = JSON.parse(localStorage.getItem('currentUser'));
-  const date = document.getElementById('travelDate').value ||
-               new Date().toISOString().split('T')[0];
+  const date = document.getElementById('travelDate').value
+             || new Date().toISOString().split('T')[0];
 
-  // DEMO MODE
+  // DEMO MODE — admin preview
   if (user && user.role === 'admin') {
     const demoCode = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
-    const booking = {
-      id:              0,
-      booking_code:    demoCode,
-      is_demo:         true,
+    const booking  = {
+      id: 0, booking_code: demoCode, is_demo: true,
       route:           schedule.route,
       departure_time:  schedule.departure_time || '—',
       arrival_time:    schedule.arrival_time   || '—',
@@ -563,8 +751,8 @@ async function createBookingAndGo(schedule, pax, total) {
       passenger_count: pax,
       status:          'pending',
       schedule_id:     schedule.id,
-      bus_name:        schedule.bus_name   || null,
-      bus_plate:       schedule.bus_plate  || null,
+      bus_name:        schedule.bus_name    || null,
+      bus_plate:       schedule.bus_plate   || null,
       seat_layout:     schedule.seat_layout || '4-column',
       total_seats:     schedule.total_seats || 40,
     };
@@ -578,14 +766,16 @@ async function createBookingAndGo(schedule, pax, total) {
     const res  = await authFetch('/api/bookings/', {
       method: 'POST',
       body: JSON.stringify({
-        user_id:         user.id,
-        schedule_id:     parseInt(schedule.id),
-        travel_date:     date,
-        passenger_count: pax
+        user_id:          user.id,
+        schedule_id:      parseInt(schedule.id),
+        travel_date:      date,
+        passenger_count:  pax,
+        passenger_type:   localStorage.getItem('passengerType') || 'regular',
+        id_number:        localStorage.getItem('idNumber') || '',
+        id_type:          localStorage.getItem('idType') || '',
       })
     });
     const data = await res.json();
-
     if (res.ok) {
       const booking = {
         ...data.booking,
@@ -599,13 +789,13 @@ async function createBookingAndGo(schedule, pax, total) {
     } else {
       Toast.error(data.error || 'Could not create booking. Please try again.');
     }
-  } catch(e) {
+  } catch (e) {
     Toast.error('Server error. Please try again.');
   }
 }
 
 /* ── Init ────────────────────────────────────────────── */
-window.onload = async function() {
+window.onload = async function () {
   const user = JSON.parse(localStorage.getItem('currentUser'));
   if (!user) { window.location.href = '/login'; return; }
 
@@ -625,7 +815,7 @@ window.onload = async function() {
     allSchedules = Array.isArray(raw) ? raw : (raw.schedules || []);
     document.getElementById('scheduleCount').textContent = allSchedules.length + ' available';
     renderList(allSchedules, document.getElementById('scheduleList'));
-  } catch(e) {
+  } catch (e) {
     Toast.error('Could not load schedules. Is the server running?');
     document.getElementById('scheduleList').innerHTML =
       '<div class="empty-state"><p>Failed to load schedules.</p></div>';

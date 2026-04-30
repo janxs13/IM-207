@@ -58,6 +58,25 @@ def admin_reset_password(user_id):
 
 
 # ── Buses ─────────────────────────────────────────────────────────
+
+# Public endpoint for welcome popup — returns fleet info without auth
+@admin_bp.route("/buses/public", methods=["GET"])
+def list_buses_public():
+    """Public endpoint to display fleet info in welcome popup - no auth required."""
+    buses = Bus.query.filter_by(is_active=True).all()
+    return jsonify({"buses": [{
+        "id":           b.id,
+        "bus_name":     b.name,
+        "name":         b.name,
+        "plate_number": b.plate_number,
+        "total_seats":  b.total_seats,
+        "seat_layout":  b.seat_layout,
+        "is_active":    b.is_active,
+        "image_url":   (f"/static/bus_images/{b.image_filename}" 
+                        if b.image_filename else None)
+    } for b in buses]})
+
+
 @admin_bp.route("/buses", methods=["GET"])
 @jwt_required()
 @admin_required
@@ -87,8 +106,16 @@ def edit_bus(bus_id):
     if data.get("name"):         bus.name         = data["name"].strip()
     if data.get("bus_name"):     bus.name         = data["bus_name"].strip()
     if data.get("plate_number"): bus.plate_number = data["plate_number"].strip()
-    if data.get("total_seats"):  bus.total_seats  = int(data["total_seats"])
-    if data.get("seat_layout"):  bus.seat_layout  = data["seat_layout"]
+    if data.get("total_seats") is not None:
+        seats = int(data["total_seats"])
+        if seats < 1 or seats > 100:
+            return jsonify({"error": "Total seats must be between 1 and 100"}), 400
+        bus.total_seats = seats
+    if data.get("seat_layout"):
+        allowed = {"2-column","3-column","4-column","5-column"}
+        if data["seat_layout"] not in allowed:
+            return jsonify({"error": "Invalid seat layout"}), 400
+        bus.seat_layout = data["seat_layout"]
     if "is_active" in data:      bus.is_active    = bool(data["is_active"])
     try:
         db.session.commit()
@@ -104,6 +131,7 @@ def edit_bus(bus_id):
 def remove_bus(bus_id):
     result, status = delete_bus(bus_id)
     return jsonify(result), status
+
 
 
 # ── Bus image upload ──────────────────────────────────────────────
@@ -436,23 +464,121 @@ def revenue_chart():
 
 
 # ── Helper ────────────────────────────────────────────────────────
+
+# ── GET /api/admin/schedules/<id>/manifest — passenger manifest ──
+@admin_bp.route("/schedules/<int:schedule_id>/manifest", methods=["GET"])
+@jwt_required()
+@admin_required
+def passenger_manifest(schedule_id):
+    """
+    Generate passenger manifest for a schedule.
+    Required by LTFRB — lists all confirmed passengers with seat assignments.
+    """
+    from models.booking import Booking
+    from models.schedule import Schedule
+    from models.user import User as UserModel
+    from models.bus import Bus
+
+    schedule = Schedule.query.get(schedule_id)
+    if not schedule:
+        return jsonify({"error": "Schedule not found"}), 404
+
+    bus = Bus.query.get(schedule.bus_id) if schedule.bus_id else None
+    bookings = Booking.query.filter(
+        Booking.schedule_id == schedule_id,
+        Booking.status == "confirmed",
+        Booking.deleted_at.is_(None)
+    ).order_by(Booking.seat_number).all()
+
+    passengers = []
+    for b in bookings:
+        u = UserModel.query.get(b.user_id)
+        passengers.append({
+            "seat":           b.seat_number or "—",
+            "name":           f"{u.first_name or ''} {u.last_name or ''}".strip() if u else "—",
+            "phone":          u.phone if u else "—",
+            "booking_code":   b.booking_code,
+            "passenger_type": b.passenger_type or "regular",
+            "id_number":      b.id_number or "—",
+            "amount":         b.amount,
+        })
+
+    return jsonify({
+        "schedule_id":    schedule_id,
+        "route":          schedule.route,
+        "departure":      schedule.departure_time,
+        "bus":            bus.name if bus else "—",
+        "bus_plate":      bus.plate_number if bus else "—",
+        "total_seats":    bus.total_seats if bus else 40,
+        "confirmed_pax":  len(passengers),
+        "passengers":     passengers,
+    }), 200
+
+
+# ── PUT /api/admin/schedules/<id>/trip-status ────────────────────
+@admin_bp.route("/schedules/<int:schedule_id>/trip-status", methods=["PUT"])
+@jwt_required()
+@admin_required
+def admin_update_trip_status(schedule_id):
+    """Admin updates live trip status — passengers see this in real-time."""
+    from models.schedule import Schedule
+    data = request.get_json() or {}
+    schedule = Schedule.query.get(schedule_id)
+    if not schedule:
+        return jsonify({"error": "Schedule not found"}), 404
+
+    valid_statuses = {"scheduled", "boarding", "departed", "arrived", "cancelled", "delayed"}
+    new_status = (data.get("trip_status") or "").lower()
+    if new_status not in valid_statuses:
+        return jsonify({"error": f"Invalid status. Choose: {', '.join(sorted(valid_statuses))}"}), 400
+
+    schedule.trip_status   = new_status
+    schedule.delay_minutes = int(data.get("delay_minutes", 0) or 0)
+    schedule.delay_reason  = (data.get("delay_reason") or "")[:200] or None
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update status"}), 500
+
+    # Broadcast to all passengers watching this schedule
+    try:
+        from extensions import socketio
+        socketio.emit("trip_status_update", {
+            "schedule_id":   schedule_id,
+            "trip_status":   new_status,
+            "delay_minutes": schedule.delay_minutes,
+            "delay_reason":  schedule.delay_reason,
+        })
+    except Exception:
+        pass
+
+    return jsonify({"message": "Trip status updated", "trip_status": new_status}), 200
+
 def _serialize_booking_admin(b):
     sched = Schedule.query.get(b.schedule_id)
     usr   = User.query.get(b.user_id)
     bus   = Bus.query.get(sched.bus_id) if sched and sched.bus_id else None
+    pax   = (
+        f"{usr.first_name or ''} {usr.last_name or ''}".strip()
+        if usr and (usr.first_name or usr.last_name)
+        else (usr.email if usr else "—")
+    )
     return {
         "id":              b.id,
         "booking_code":    b.booking_code,
-        "passenger":       f"{usr.first_name} {usr.last_name}".strip() if usr else "—",
+        "passenger":       pax,
         "email":           usr.email if usr else "—",
         "route":           sched.route if sched else "—",
         "travel_date":     b.travel_date,
         "departure":       (sched.departure_time or "—").split("T")[-1] if sched else "—",
+        "departure_time":  sched.departure_time if sched else "—",
         "seat_number":     b.seat_number or "—",
         "passenger_count": b.passenger_count or 1,
         "amount":          b.amount or 0,
         "status":          b.status,
         "payment_method":  b.payment_method or "—",
+        "reference_no":    b.reference_no or "—",
         "bus_name":        bus.name if bus else "—",
         "bus_plate":       bus.plate_number if bus else "—",
     }

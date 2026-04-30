@@ -16,7 +16,7 @@ const Auth = {
   clearSession() {
     ['access_token','authToken','currentUser','currentBooking','currentSchedule',
      'selectedFrom','selectedTo','selectedPrice','receiptPayment','receiptRef',
-     'receiptAmount','passengerCount','selectedSeats'].forEach(k => localStorage.removeItem(k));
+     'receiptAmount','passengerCount','selectedSeats','lastBookingCode','farePerSeat'].forEach(k => localStorage.removeItem(k));
   },
 
   headers(extra = {}) {

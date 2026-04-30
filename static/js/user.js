@@ -1,366 +1,152 @@
 /* ==========================================================
-   BusBook — user.js
-   Passenger-facing JS: booking search, seat selection, profile
+   BusBook — user.js  (fixed)
+   Passenger-facing JS: booking history, profile helpers
+   NOTE: book.html, seat-selection.html, transaction.html,
+   paymongo.html each have their own inline JS that uses
+   localStorage.currentBooking — this file must NOT override
+   that pattern. user.js only handles profile & history.
    Requires: auth.js loaded first
    ========================================================== */
 
 /* ── API helper ─────────────────────────────────────────── */
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: Auth.headers(),
-    ...options
-  });
-
-  if (res.status === 401) {
-    Auth.logout();
-    return null;
-  }
-
+  const res = await fetch(url, { headers: Auth.headers(), ...options });
+  if (res.status === 401) { Auth.logout(); return null; }
   return res;
 }
 
-/* ── Schedule / Booking search (book.html) ──────────────── */
-async function searchSchedules() {
-  const origin      = document.getElementById('origin')?.value?.trim();
-  const destination = document.getElementById('destination')?.value?.trim();
-  const date        = document.getElementById('travel_date')?.value;
-  const resultsEl   = document.getElementById('searchResults');
-
-  if (!origin || !destination || !date) {
-    Toast.warning('Please fill in all fields.');
-    return;
-  }
-
-  if (!Auth.requireLogin()) return;
-
-  if (resultsEl) {
-    resultsEl.innerHTML = `<div class="text-center mt-16"><div class="spinner"></div></div>`;
-    resultsEl.style.display = 'block';
-  }
-
-  try {
-    const params = new URLSearchParams({ origin, destination, date });
-    const res = await apiFetch(`/api/schedules/search?${params}`);
-    if (!res) return;
-
-    const data = await res.json();
-    renderScheduleResults(data.schedules || [], resultsEl);
-  } catch (err) {
-    if (resultsEl) resultsEl.innerHTML = `<div class="alert alert-error">Failed to load schedules. Please try again.</div>`;
-  }
-}
-
-function renderScheduleResults(schedules, container) {
-  if (!container) return;
-
-  if (!schedules.length) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🔍</span><p>No schedules found for this route and date.</p></div>`;
-    return;
-  }
-
-  container.innerHTML = schedules.map(s => `
-    <div class="route-card" onclick="selectSchedule(${s.id}, '${s.route}', '${s.departure_time}', ${s.price})">
-      <div class="route-from-to">
-        <div>
-          <div class="route-city">${s.route.split(' - ')[0] || s.route}</div>
-          <div class="route-time">${s.departure_time}</div>
-        </div>
-        <div class="route-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-        <div>
-          <div class="route-city">${s.route.split(' - ')[1] || '—'}</div>
-          <div class="route-time">${s.arrival_time || 'TBA'}</div>
-        </div>
-      </div>
-      <div>
-        <span class="badge badge-${s.available_seats > 5 ? 'green' : s.available_seats > 0 ? 'yellow' : 'red'}">
-          ${s.available_seats} seats left
-        </span>
-      </div>
-      <div class="route-price">₱${Number(s.price).toFixed(2)}</div>
-      <button class="btn btn-primary btn-sm">Select</button>
-    </div>
-  `).join('');
-}
-
-function selectSchedule(id, route, time, price) {
-  sessionStorage.setItem('selectedSchedule', JSON.stringify({ id, route, time, price }));
-  window.location.href = '/seat-selection';
-}
-
-/* ── Seat selection (seat-selection.html) ───────────────── */
-let selectedSeat = null;
-let scheduleData = null;
-
-async function initSeatSelection() {
-  const info = JSON.parse(sessionStorage.getItem('selectedSchedule') || 'null');
-  if (!info) { window.location.href = '/book'; return; }
-  scheduleData = info;
-
-  const summaryEl = document.getElementById('tripSummary');
-  if (summaryEl) {
-    const parts = info.route.split(' - ');
-    summaryEl.innerHTML = `
-      <div style="font-weight:700;font-size:15px;">${parts[0]} → ${parts[1] || '—'}</div>
-      <div style="font-size:13px;color:var(--text-3);margin-top:4px;">${info.time} &nbsp;|&nbsp; ₱${Number(info.price).toFixed(2)}</div>
-    `;
-  }
-
-  await loadSeats(info.id);
-}
-
-async function loadSeats(scheduleId) {
-  try {
-    const res = await apiFetch(`/api/schedules/${scheduleId}/seats`);
-    if (!res) return;
-    const data = await res.json();
-    renderSeatMap(data.seats || []);
-  } catch (err) {
-    Toast.error('Could not load seat map.');
-  }
-}
-
-function renderSeatMap(seats) {
-  const grid = document.getElementById('seatGrid');
-  if (!grid) return;
-
-  grid.innerHTML = seats.map(seat => {
-    const cls = seat.status === 'available' ? 'seat-available' :
-                seat.status === 'held'      ? 'seat-held' : 'seat-taken';
-    const clickable = seat.status === 'available' ? `onclick="pickSeat('${seat.seat_number}', this)"` : '';
-    return `<div class="seat ${cls}" ${clickable} title="Seat ${seat.seat_number}">${seat.seat_number}</div>`;
-  }).join('');
-}
-
-function pickSeat(seatNum, el) {
-  document.querySelectorAll('.seat-selected').forEach(s => {
-    s.classList.remove('seat-selected');
-    s.classList.add('seat-available');
-  });
-  el.classList.remove('seat-available');
-  el.classList.add('seat-selected');
-  selectedSeat = seatNum;
-
-  const display = document.getElementById('selectedSeatDisplay');
-  const confirmBtn = document.getElementById('confirmSeatBtn');
-  if (display) display.textContent = seatNum;
-  if (confirmBtn) confirmBtn.disabled = false;
-}
-
-async function confirmSeat() {
-  if (!selectedSeat || !scheduleData) return;
-  if (!Auth.requireLogin()) return;
-
-  try {
-    const res = await apiFetch('/api/bookings/', {
-      method: 'POST',
-      body: JSON.stringify({
-        schedule_id: scheduleData.id,
-        seat_number: selectedSeat
-      })
-    });
-
-    if (!res) return;
-    const data = await res.json();
-
-    if (res.ok && data.booking_id) {
-      sessionStorage.setItem('bookingId', data.booking_id);
-      sessionStorage.setItem('bookingRef', data.reference_code || '');
-      window.location.href = '/transaction';
-    } else {
-      Toast.error(data.message || 'Booking failed. Please try again.');
-    }
-  } catch (err) {
-    Toast.error('Network error. Please try again.');
-  }
-}
-
-/* ── Transaction / Payment (transaction.html) ───────────── */
-async function initTransaction() {
-  const bookingId = sessionStorage.getItem('bookingId');
-  if (!bookingId) { window.location.href = '/book'; return; }
-
-  try {
-    const res = await apiFetch(`/api/bookings/${bookingId}`);
-    if (!res) return;
-    const data = await res.json();
-    renderTransactionSummary(data);
-  } catch (err) {
-    Toast.error('Failed to load booking details.');
-  }
-}
-
-function renderTransactionSummary(booking) {
-  const el = document.getElementById('transactionSummary');
-  if (!el || !booking) return;
-  el.innerHTML = `
-    <div class="flex justify-between mb-16">
-      <span class="text-muted">Route</span>
-      <span class="fw-600">${booking.route || '—'}</span>
-    </div>
-    <div class="flex justify-between mb-16">
-      <span class="text-muted">Seat</span>
-      <span class="fw-600">${booking.seat_number || '—'}</span>
-    </div>
-    <div class="flex justify-between mb-16">
-      <span class="text-muted">Departure</span>
-      <span class="fw-600">${booking.departure_time || '—'}</span>
-    </div>
-    <div class="flex justify-between" style="font-size:18px;font-weight:800;color:var(--brand-darker)">
-      <span>Total</span>
-      <span>₱${Number(booking.price || 0).toFixed(2)}</span>
-    </div>
-  `;
-}
-
-async function payWith(method) {
-  const bookingId = sessionStorage.getItem('bookingId');
-  if (!bookingId) return;
-
-  try {
-    const res = await apiFetch('/api/payments/', {
-      method: 'POST',
-      body: JSON.stringify({ booking_id: bookingId, payment_method: method })
-    });
-
-    if (!res) return;
-    const data = await res.json();
-
-    if (res.ok) {
-      const routes = { gcash: '/gcash', paymaya: '/paymaya', paypal: '/paypal' };
-      window.location.href = routes[method] || '/ticket';
-    } else {
-      Toast.error(data.message || 'Payment failed.');
-    }
-  } catch (err) {
-    Toast.error('Network error. Please try again.');
-  }
-}
-
-/* ── Profile & booking history (profile.html) ───────────── */
+/* ── Profile init (profile.html) ────────────────────────── */
 async function initProfile() {
   if (!Auth.requireLogin()) return;
-
   const user = Auth.getUser();
   if (user) {
-    setEl('profileName',  user.username || user.email);
-    setEl('profileEmail', user.email || '—');
-    setEl('profilePhone', user.phone || '—');
-    setEl('profileRole',  user.role || 'passenger');
-    setEl('avatarLetter', (user.username || user.email || '?')[0].toUpperCase());
+    setEl('profileName',  `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email);
+    setEl('profileEmail', user.email  || '—');
+    setEl('profilePhone', user.phone  || '—');
+    setEl('profileRole',  user.role   || 'passenger');
+    setEl('avatarLetter', ((user.first_name || user.email || '?')[0]).toUpperCase());
   }
-
   await loadBookingHistory();
 }
 
+/* ── Booking history ────────────────────────────────────── */
+// FIX: was /api/bookings/my — correct endpoint is /api/bookings/user/<id>
 async function loadBookingHistory() {
   const listEl = document.getElementById('bookingList');
   if (!listEl) return;
+  listEl.innerHTML = `<div class="empty-state"><div class="spinner"></div></div>`;
 
-  listEl.innerHTML = `<div class="text-center mt-16"><div class="spinner"></div></div>`;
+  const user = Auth.getUser();
+  if (!user) return;
 
   try {
-    const res = await apiFetch('/api/bookings/my');
+    const res = await apiFetch(`/api/bookings/user/${user.id}`);
     if (!res) return;
     const data = await res.json();
-    renderBookingHistory(data.bookings || [], listEl);
+    renderBookingHistory(Array.isArray(data) ? data : (data.bookings || []), listEl);
   } catch {
-    listEl.innerHTML = `<div class="alert alert-error">Could not load bookings.</div>`;
+    listEl.innerHTML = `<div class="empty-state"><p>Could not load bookings.</p></div>`;
   }
 }
 
+// FIX: was b.reference_code — correct field is b.booking_code; was b.price — correct is b.amount
 function renderBookingHistory(bookings, container) {
   if (!bookings.length) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🎫</span><p>No bookings yet. <a href="/book">Book your first ride!</a></p></div>`;
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🎫</span>
+        <p>No bookings yet. <a href="/book">Book your first ride!</a></p>
+      </div>`;
     return;
   }
-
   container.innerHTML = bookings.map(b => `
     <div class="booking-card">
       <div class="booking-icon"><i class="fa-solid fa-bus"></i></div>
       <div class="booking-info">
         <div class="booking-route">${b.route || 'Unknown route'}</div>
         <div class="booking-meta">
-          ${b.departure_time || '—'} &nbsp;·&nbsp; Seat ${b.seat_number || '—'} &nbsp;·&nbsp;
-          <span class="badge badge-${b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'yellow'}" style="font-size:11px;padding:1px 7px;">
+          ${b.departure_time || b.time || '—'}
+          &nbsp;·&nbsp; Seat ${b.seat_number || '—'}
+          &nbsp;·&nbsp; ${b.travel_date || '—'}
+          &nbsp;·&nbsp;
+          <span class="badge badge-${b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'yellow'}"
+                style="font-size:11px;padding:1px 7px;">
             ${b.status || 'pending'}
           </span>
+          ${b.discount_type ? `<span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;background:rgba(16,185,129,.12);color:#059669;margin-left:4px;">${b.discount_type.toUpperCase()} 20% OFF</span>` : ''}
+          ${b.trip_status && b.trip_status !== 'scheduled' ? `<span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;margin-left:4px;background:rgba(244,162,97,.15);color:var(--brand-darker);">${{'boarding':'🚌 Boarding','departed':'🚀 Departed','arrived':'✅ Arrived','delayed':'⏰ Delayed','cancelled':'❌ Cancelled'}[b.trip_status]||b.trip_status}</span>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px;">
+          Ref: ${b.booking_code || '—'}
+          ${b.payment_method && b.payment_method !== '—' ? ' · Paid via ' + b.payment_method : ''}
+          ${b.passenger_type && b.passenger_type !== 'regular' ? ' · '+b.passenger_type.charAt(0).toUpperCase()+b.passenger_type.slice(1)+' passenger' : ''}
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-weight:700;color:var(--brand-darker);">₱${Number(b.price || 0).toFixed(2)}</div>
-        <a href="/ticket?ref=${b.reference_code}" class="text-xs" style="color:var(--blue);">View ticket</a>
+        <div style="font-weight:700;color:var(--brand-darker);">₱${Number(b.amount || b.fare || 0).toFixed(2)}</div>
+        ${b.status === 'confirmed' && b.booking_code
+          ? `<a href="/ticket?code=${b.booking_code}" class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px;">
+               <i class="fa-solid fa-ticket"></i> View Ticket
+             </a>`
+          : ''}
+        ${b.status === 'pending'
+          ? `<button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px;color:#dc2626;border-color:#dc2626;"
+                     onclick="cancelBooking('${b.booking_code}')">
+               <i class="fa-solid fa-xmark"></i> Cancel
+             </button>`
+          : ''}
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-/* ── Routes listing (routes.html) ───────────────────────── */
-let allSchedules = [];
+/* ── Cancel booking from profile ────────────────────────── */
+async function cancelBooking(code) {
+  if (!confirm(`Cancel booking ${code}? This cannot be undone.`)) return;
+  try {
+    const res = await apiFetch(`/api/bookings/cancel/${code}`, { method: 'POST' });
+    if (!res) return;
+    const data = await res.json();
+    if (res.ok) { Toast.success('Booking cancelled.'); loadBookingHistory(); }
+    else Toast.error(data.error || 'Could not cancel booking.');
+  } catch { Toast.error('Network error.'); }
+}
 
+/* ── Profile edit ────────────────────────────────────────── */
+async function saveProfile(formData) {
+  try {
+    const res = await apiFetch('/api/auth/profile', { method: 'PUT', body: JSON.stringify(formData) });
+    if (!res) return;
+    const data = await res.json();
+    if (res.ok) {
+      // Update stored user
+      const user = Auth.getUser();
+      if (user) Auth.saveSession(Auth.getToken(), { ...user, ...data.user });
+      Toast.success('Profile updated!');
+      initProfile();
+    } else {
+      Toast.error(data.error || 'Failed to update profile.');
+    }
+  } catch { Toast.error('Network error.'); }
+}
+
+/* ── Routes page ─────────────────────────────────────────── */
+// routes.html has its own inline JS, but this is a fallback
 async function initRoutes() {
   const container = document.getElementById('routeList');
   if (!container) return;
-
-  container.innerHTML = `<div class="text-center mt-16"><div class="spinner"></div></div>`;
-
   try {
     const res = await fetch('/api/schedules/');
     const data = await res.json();
-    allSchedules = data.schedules || [];
-    filterRoutes();
+    const schedules = Array.isArray(data) ? data : (data.schedules || []);
+    if (typeof filterRoutes === 'function') {
+      window.allSchedules = schedules;
+      filterRoutes();
+    }
   } catch {
-    container.innerHTML = `<div class="alert alert-error">Could not load routes.</div>`;
+    if (container) container.innerHTML = `<div class="empty-state"><p>Could not load routes.</p></div>`;
   }
-}
-
-function filterRoutes() {
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
-  const filtered = allSchedules.filter(s => s.route.toLowerCase().includes(q));
-  renderRoutes(filtered);
-}
-
-function renderRoutes(list) {
-  const container = document.getElementById('routeList');
-  if (!container) return;
-
-  if (!list.length) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🗺️</span><p>No routes found.</p></div>`;
-    return;
-  }
-
-  container.innerHTML = list.map(s => {
-    const parts = s.route.split(' - ');
-    return `
-      <div class="route-card" onclick="window.location.href='/book'">
-        <div class="route-from-to">
-          <div>
-            <div class="route-city">${parts[0] || s.route}</div>
-            <div class="route-time">${s.departure_time || '—'}</div>
-          </div>
-          <div class="route-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-          <div>
-            <div class="route-city">${parts[1] || '—'}</div>
-            <div class="route-time">${s.arrival_time || 'TBA'}</div>
-          </div>
-        </div>
-        <div>
-          <span class="badge badge-${s.available_seats > 5 ? 'green' : s.available_seats > 0 ? 'yellow' : 'red'}">
-            ${s.available_seats} seats
-          </span>
-        </div>
-        <div class="route-price">₱${Number(s.price).toFixed(2)}</div>
-        <button class="btn btn-primary btn-sm">Book Now</button>
-      </div>
-    `;
-  }).join('');
 }
 
 /* ── Utilities ──────────────────────────────────────────── */
-function setEl(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-
-function logout() {
-  Auth.logout();
-}
+function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function logout() { Auth.logout(); }
