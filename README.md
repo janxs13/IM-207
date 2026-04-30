@@ -12,23 +12,16 @@ A web application for booking bus rides built with Flask and SQLite.
 
 ## Setup Instructions
 
-### 1. Create Virtual Environment
 ```powershell
-python -m venv venv
+git clone <your-repo-link>
+cd your-project
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
 ```
 
-### 2. Install Dependencies
-```powershell
-venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-### 3. Run the App
-```powershell
-venv\Scripts\python.exe app.py
-```
-
-### 4. Open in Browser
-Go to: http://127.0.0.1:5000
+Then open http://127.0.0.1:5000 in your browser.
 
 ## Default Login (Demo)
 
@@ -57,8 +50,8 @@ IM-207/
 
 **Missing modules error:**
 ```powershell
-venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\pip install -r requirements.txt
 ```
 
 **App won't start:**
-Check that port 5000 is not in use, or change the port in app.py.
+Check that port 5000 is not in use.
